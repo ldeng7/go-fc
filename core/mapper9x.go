@@ -10,7 +10,7 @@ func newMapper90(bm *baseMapper) Mapper {
 	return &mapper90{baseMapper: *bm}
 }
 
-func (m *mapper90) init() {
+func (m *mapper90) reset() {
 }
 
 // 0x91
@@ -23,7 +23,7 @@ func newMapper91(bm *baseMapper) Mapper {
 	return &mapper91{baseMapper: *bm}
 }
 
-func (m *mapper91) init() {
+func (m *mapper91) reset() {
 }
 
 // 0x92
@@ -36,7 +36,7 @@ func newMapper92(bm *baseMapper) Mapper {
 	return &mapper92{baseMapper: *bm}
 }
 
-func (m *mapper92) init() {
+func (m *mapper92) reset() {
 }
 
 // 0x93
@@ -49,7 +49,7 @@ func newMapper93(bm *baseMapper) Mapper {
 	return &mapper93{baseMapper: *bm}
 }
 
-func (m *mapper93) init() {
+func (m *mapper93) reset() {
 }
 
 // 0x94
@@ -62,7 +62,7 @@ func newMapper94(bm *baseMapper) Mapper {
 	return &mapper94{baseMapper: *bm}
 }
 
-func (m *mapper94) init() {
+func (m *mapper94) reset() {
 }
 
 // 0x95
@@ -75,7 +75,7 @@ func newMapper95(bm *baseMapper) Mapper {
 	return &mapper95{baseMapper: *bm}
 }
 
-func (m *mapper95) init() {
+func (m *mapper95) reset() {
 }
 
 // 0x96
@@ -88,7 +88,7 @@ func newMapper96(bm *baseMapper) Mapper {
 	return &mapper96{baseMapper: *bm}
 }
 
-func (m *mapper96) init() {
+func (m *mapper96) reset() {
 }
 
 // 0x97
@@ -101,7 +101,7 @@ func newMapper97(bm *baseMapper) Mapper {
 	return &mapper97{baseMapper: *bm}
 }
 
-func (m *mapper97) init() {
+func (m *mapper97) reset() {
 }
 
 // 0x98
@@ -114,7 +114,7 @@ func newMapper98(bm *baseMapper) Mapper {
 	return &mapper98{baseMapper: *bm}
 }
 
-func (m *mapper98) init() {
+func (m *mapper98) reset() {
 }
 
 // 0x99
@@ -127,7 +127,7 @@ func newMapper99(bm *baseMapper) Mapper {
 	return &mapper99{baseMapper: *bm}
 }
 
-func (m *mapper99) init() {
+func (m *mapper99) reset() {
 }
 
 // 0x9a
@@ -140,7 +140,7 @@ func newMapper9a(bm *baseMapper) Mapper {
 	return &mapper9a{baseMapper: *bm}
 }
 
-func (m *mapper9a) init() {
+func (m *mapper9a) reset() {
 }
 
 // 0x9b
@@ -153,7 +153,7 @@ func newMapper9b(bm *baseMapper) Mapper {
 	return &mapper9b{baseMapper: *bm}
 }
 
-func (m *mapper9b) init() {
+func (m *mapper9b) reset() {
 }
 
 // 0x9c
@@ -166,7 +166,7 @@ func newMapper9c(bm *baseMapper) Mapper {
 	return &mapper9c{baseMapper: *bm}
 }
 
-func (m *mapper9c) init() {
+func (m *mapper9c) reset() {
 }
 
 // 0x9d
@@ -179,7 +179,7 @@ func newMapper9d(bm *baseMapper) Mapper {
 	return &mapper9d{baseMapper: *bm}
 }
 
-func (m *mapper9d) init() {
+func (m *mapper9d) reset() {
 }
 
 // 0x9e
@@ -192,7 +192,7 @@ func newMapper9e(bm *baseMapper) Mapper {
 	return &mapper9e{baseMapper: *bm}
 }
 
-func (m *mapper9e) init() {
+func (m *mapper9e) reset() {
 }
 
 // 0x9f
@@ -205,5 +205,5 @@ func newMapper9f(bm *baseMapper) Mapper {
 	return &mapper9f{baseMapper: *bm}
 }
 
-func (m *mapper9f) init() {
+func (m *mapper9f) reset() {
 }

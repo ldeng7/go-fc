@@ -51,7 +51,7 @@ func newCpu(sys *Sys) *Cpu {
 	cpu.regA, cpu.regX, cpu.regY, cpu.regS = 0, 0, 0, 0xff
 	cpu.regP = cpuRegZ | cpuRegR
 	cpu.intr = 0
-	cpu.nCycle, cpu.nCycleDma = 0, 0
+	cpu.nCycle, cpu.nCycleDma = 9223372036834775808, 0
 
 	cpu.znTable[0] = cpuRegZ
 	for i := 1; i < 256; i++ {
@@ -2538,7 +2538,7 @@ func (cpu *Cpu) run(nCycleReq int64) int64 {
 			nCycleExec += 7
 		}
 		nCycleReq -= nCycleExec
-		cpu.nCycle += nCycleExec // ldeng7: must test for next round of int64
+		cpu.nCycle += nCycleExec
 		cpu.sys.mapper.clock(nCycleExec)
 	}
 	return cpu.nCycle - nCyclePrev

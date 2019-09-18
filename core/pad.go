@@ -48,8 +48,8 @@ func (pad *Pad) write(addr uint16, data byte) {
 func (pad *Pad) setKey(p byte, k byte) {
 	switch p {
 	case 1:
-		pad.b1 |= k
+		pad.b1 = k
 	case 2:
-		pad.b2 |= k
+		pad.b2 = k
 	}
 }

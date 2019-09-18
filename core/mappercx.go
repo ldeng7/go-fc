@@ -10,7 +10,7 @@ func newMapperc0(bm *baseMapper) Mapper {
 	return &mapperc0{baseMapper: *bm}
 }
 
-func (m *mapperc0) init() {
+func (m *mapperc0) reset() {
 }
 
 // 0xc1
@@ -23,7 +23,25 @@ func newMapperc1(bm *baseMapper) Mapper {
 	return &mapperc1{baseMapper: *bm}
 }
 
-func (m *mapperc1) init() {
+func (m *mapperc1) reset() {
+	m.mem.setProm32kBank((m.mem.nProm8kPage >> 2) - 1)
+	if m.mem.nVrom1kPage != 0 {
+		m.mem.setVrom8kBank(0)
+	}
+}
+
+func (m *mapperc1) write(addr uint16, data byte) {
+	switch addr {
+	case 0x6000:
+		m.mem.setVrom2kBank(0, uint32((data>>1)&0x7e))
+		m.mem.setVrom2kBank(2, uint32((data>>1)&0x7e)+1)
+	case 0x6001:
+		m.mem.setVrom2kBank(4, uint32(data>>1))
+	case 0x6002:
+		m.mem.setVrom2kBank(6, uint32(data>>1))
+	case 0x6003:
+		m.mem.setProm32kBank(0)
+	}
 }
 
 // 0xc2
@@ -36,8 +54,8 @@ func newMapperc2(bm *baseMapper) Mapper {
 	return &mapperc2{baseMapper: *bm}
 }
 
-func (m *mapperc2) init() {
-	m.mem.setProm32kBank(m.mem.prom32kSize - 1)
+func (m *mapperc2) reset() {
+	m.mem.setProm32kBank(m.mem.nProm8kPage>>2 - 1)
 }
 
 func (m *mapperc2) write(addr uint16, data byte) {
@@ -54,7 +72,7 @@ func newMapperc3(bm *baseMapper) Mapper {
 	return &mapperc3{baseMapper: *bm}
 }
 
-func (m *mapperc3) init() {
+func (m *mapperc3) reset() {
 }
 
 // 0xc4
@@ -67,7 +85,7 @@ func newMapperc4(bm *baseMapper) Mapper {
 	return &mapperc4{baseMapper: *bm}
 }
 
-func (m *mapperc4) init() {
+func (m *mapperc4) reset() {
 }
 
 // 0xc5
@@ -80,7 +98,7 @@ func newMapperc5(bm *baseMapper) Mapper {
 	return &mapperc5{baseMapper: *bm}
 }
 
-func (m *mapperc5) init() {
+func (m *mapperc5) reset() {
 }
 
 // 0xc6
@@ -93,7 +111,7 @@ func newMapperc6(bm *baseMapper) Mapper {
 	return &mapperc6{baseMapper: *bm}
 }
 
-func (m *mapperc6) init() {
+func (m *mapperc6) reset() {
 }
 
 // 0xc7
@@ -106,7 +124,7 @@ func newMapperc7(bm *baseMapper) Mapper {
 	return &mapperc7{baseMapper: *bm}
 }
 
-func (m *mapperc7) init() {
+func (m *mapperc7) reset() {
 }
 
 // 0xc8
@@ -119,7 +137,25 @@ func newMapperc8(bm *baseMapper) Mapper {
 	return &mapperc8{baseMapper: *bm}
 }
 
-func (m *mapperc8) init() {
+func (m *mapperc8) reset() {
+	m.mem.setProm16kBank(4, 0)
+	m.mem.setProm16kBank(6, 0)
+	if m.mem.nVrom1kPage != 0 {
+		m.mem.setVrom8kBank(0)
+	}
+}
+
+func (m *mapperc8) write(addr uint16, data byte) {
+	b := uint32(addr) & 0x07
+	m.mem.setProm16kBank(4, b)
+	m.mem.setProm16kBank(6, b)
+	m.mem.setVrom8kBank(b)
+
+	if addr&0x01 != 0 {
+		m.mem.setVramMirror(memVramMirrorV)
+	} else {
+		m.mem.setVramMirror(memVramMirrorH)
+	}
 }
 
 // 0xc9
@@ -132,7 +168,21 @@ func newMapperc9(bm *baseMapper) Mapper {
 	return &mapperc9{baseMapper: *bm}
 }
 
-func (m *mapperc9) init() {
+func (m *mapperc9) reset() {
+	m.mem.setProm16kBank(4, 0)
+	m.mem.setProm16kBank(6, 0)
+	if m.mem.nVrom1kPage != 0 {
+		m.mem.setVrom8kBank(0)
+	}
+}
+
+func (m *mapperc9) write(addr uint16, data byte) {
+	var b uint32
+	if addr&0x08 != 0 {
+		b = uint32(addr) & 0x03
+	}
+	m.mem.setProm32kBank(b)
+	m.mem.setVrom8kBank(b)
 }
 
 // 0xca
@@ -145,70 +195,37 @@ func newMapperca(bm *baseMapper) Mapper {
 	return &mapperca{baseMapper: *bm}
 }
 
-func (m *mapperca) init() {
+func (m *mapperca) reset() {
+	m.mem.setProm16kBank(4, 6)
+	m.mem.setProm16kBank(6, 7)
+	if m.mem.nVrom1kPage != 0 {
+		m.mem.setVrom8kBank(0)
+	}
 }
 
-// 0xcb
-
-type mappercb struct {
-	baseMapper
+func (m *mapperca) writeEx(addr uint16, data byte) {
+	if addr >= 0x4020 {
+		m.write(addr, data)
+	}
 }
 
-func newMappercb(bm *baseMapper) Mapper {
-	return &mappercb{baseMapper: *bm}
+func (m *mapperca) writeLow(addr uint16, data byte) {
+	m.write(addr, data)
 }
 
-func (m *mappercb) init() {
-}
+func (m *mapperca) write(addr uint16, data byte) {
+	b := uint32(addr>>1) & 0x07
+	m.mem.setProm16kBank(4, b)
+	if addr&0x000c == 0x000c {
+		m.mem.setProm16kBank(6, b+1)
+	} else {
+		m.mem.setProm16kBank(6, b)
+	}
+	m.mem.setVrom8kBank(b)
 
-// 0xcc
-
-type mappercc struct {
-	baseMapper
-}
-
-func newMappercc(bm *baseMapper) Mapper {
-	return &mappercc{baseMapper: *bm}
-}
-
-func (m *mappercc) init() {
-}
-
-// 0xcd
-
-type mappercd struct {
-	baseMapper
-}
-
-func newMappercd(bm *baseMapper) Mapper {
-	return &mappercd{baseMapper: *bm}
-}
-
-func (m *mappercd) init() {
-}
-
-// 0xce
-
-type mapperce struct {
-	baseMapper
-}
-
-func newMapperce(bm *baseMapper) Mapper {
-	return &mapperce{baseMapper: *bm}
-}
-
-func (m *mapperce) init() {
-}
-
-// 0xcf
-
-type mappercf struct {
-	baseMapper
-}
-
-func newMappercf(bm *baseMapper) Mapper {
-	return &mappercf{baseMapper: *bm}
-}
-
-func (m *mappercf) init() {
+	if addr&0x01 != 0 {
+		m.mem.setVramMirror(memVramMirrorH)
+	} else {
+		m.mem.setVramMirror(memVramMirrorV)
+	}
 }

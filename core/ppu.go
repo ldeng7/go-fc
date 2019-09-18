@@ -36,24 +36,27 @@ const (
 type Ppu struct {
 	sys *Sys
 
-	toggle  bool
-	readBuf byte
 	reg0    byte
 	reg1    byte
 	reg2    byte
 	reg3    byte
+	readBuf byte
 	loopyT  uint16
 	loopyV  uint16
 	loopyX  uint16
 	loopyY  uint16
 	loopySh uint16
+	bgPal   [16]byte
+	spPal   [16]byte
+	spram   [256]byte
 
-	bExtLatch bool
-	bChrLatch bool
-	screen    *FrameBuffer
-	iScanline uint16
-	palette   *[64]uint32
-	bitRev    [256]byte
+	toggle        bool
+	bExtLatch     bool
+	bChrLatch     bool
+	iScanline     uint16
+	screen        *FrameBuffer
+	palette       *[64]uint32
+	spMirrorTable [256]byte
 }
 
 func newPpu(sys *Sys) *Ppu {
@@ -68,10 +71,11 @@ func newPpu(sys *Sys) *Ppu {
 			}
 			m >>= 1
 		}
-		ppu.bitRev[i] = c
+		ppu.spMirrorTable[i] = c
 	}
 
 	ppu.readBuf = 0xff
+	ppu.palette = &ppuPalette[0]
 	return ppu
 }
 
@@ -87,7 +91,7 @@ func (ppu *Ppu) read(addr uint16) byte {
 		ppu.reg2 &^= ppuReg2VBlank
 		return data
 	case 0x2004:
-		data = mem.spram[ppu.reg3]
+		data = ppu.spram[ppu.reg3]
 		ppu.reg3++
 		return data
 	case 0x2007:
@@ -99,9 +103,9 @@ func (ppu *Ppu) read(addr uint16) byte {
 		}
 		if addr >= 0x3f00 {
 			if addr&0x0010 == 0 {
-				return mem.bgPal[addr&0x000f]
+				return ppu.bgPal[addr&0x000f]
 			} else {
-				return mem.spPal[addr&0x000f]
+				return ppu.spPal[addr&0x000f]
 			}
 		}
 		if addr >= 0x3000 {
@@ -119,7 +123,7 @@ func (ppu *Ppu) write(addr uint16, data byte) {
 	switch addr {
 	case 0x2000:
 		ppu.loopyT = ppu.loopyT&0xf3ff | ((uint16(data) & 0x0003) << 10)
-		if (data&0x80 != 0) && (ppu.reg0&0x80 == 0) && (ppu.reg2&0x80 != 0) {
+		if (data&0x80 != 0) && (ppu.reg0&ppuReg0VBlank == 0) && (ppu.reg2&ppuReg2VBlank != 0) {
 			ppu.sys.cpu.intr |= cpuIntrTypNmi
 		}
 		ppu.reg0 = data
@@ -128,20 +132,20 @@ func (ppu *Ppu) write(addr uint16, data byte) {
 	case 0x2003:
 		ppu.reg3 = data
 	case 0x2004:
-		mem.spram[ppu.reg3] = data
+		ppu.spram[ppu.reg3] = data
 		ppu.reg3++
 	case 0x2005:
 		if !ppu.toggle {
 			ppu.loopyT = (ppu.loopyT & 0xffe0) | (uint16(data) >> 3)
 			ppu.loopyX = uint16(data & 0x07)
 		} else {
-			ppu.loopyT = (ppu.loopyT & 0xfc1f) | ((uint16(data) & 0x00f8) << 2)
-			ppu.loopyT = (ppu.loopyT & 0x8fff) | ((uint16(data) & 0x0007) << 12)
+			ppu.loopyT = (ppu.loopyT & 0xfc1f) | (uint16(data&0xf8) << 2)
+			ppu.loopyT = (ppu.loopyT & 0x8fff) | (uint16(data&0x07) << 12)
 		}
 		ppu.toggle = !ppu.toggle
 	case 0x2006:
 		if !ppu.toggle {
-			ppu.loopyT = (ppu.loopyT & 0x00ff) | ((uint16(data) & 0x003f) << 8)
+			ppu.loopyT = (ppu.loopyT & 0x00ff) | (uint16(data&0x3f) << 8)
 		} else {
 			ppu.loopyT = (ppu.loopyT & 0xff00) | uint16(data)
 			ppu.loopyV = ppu.loopyT
@@ -158,15 +162,15 @@ func (ppu *Ppu) write(addr uint16, data byte) {
 		if vaddr >= 0x3f00 {
 			data &= 0x3F
 			if vaddr&0x000f == 0 {
-				mem.bgPal[0], mem.spPal[0] = data, data
+				ppu.bgPal[0], ppu.spPal[0] = data, data
 			} else if vaddr&0x0010 == 0 {
-				mem.bgPal[vaddr&0x000f] = data
+				ppu.bgPal[vaddr&0x000f] = data
 			} else {
-				mem.spPal[vaddr&0x000f] = data
+				ppu.spPal[vaddr&0x000f] = data
 			}
-			b := mem.bgPal[0x00]
-			mem.bgPal[0x04], mem.bgPal[0x08], mem.bgPal[0x0C] = b, b, b
-			mem.spPal[0x00], mem.spPal[0x04], mem.spPal[0x08], mem.spPal[0x0C] = b, b, b, b
+			b := ppu.bgPal[0x00]
+			ppu.bgPal[0x04], ppu.bgPal[0x08], ppu.bgPal[0x0c] = b, b, b
+			ppu.spPal[0x00], ppu.spPal[0x04], ppu.spPal[0x08], ppu.spPal[0x0c] = b, b, b, b
 			break
 		}
 		if vaddr >= 0x3000 {
@@ -180,7 +184,7 @@ func (ppu *Ppu) write(addr uint16, data byte) {
 
 func (ppu *Ppu) dma(data byte) {
 	addr := uint16(data) << 8
-	sys, spram := ppu.sys, ppu.sys.mem.spram[:]
+	sys, spram := ppu.sys, ppu.spram[:]
 	for i := uint16(0); i < 256; i++ {
 		spram[i] = sys.read(addr + i)
 	}
@@ -193,7 +197,7 @@ func (ppu *Ppu) frameStart() {
 	}
 	p := ppu.screen
 	for i := 0; i < ScreenWidth; i++ {
-		(*p)[i] = 0
+		(*p)[i] = 0xff000000
 	}
 }
 
@@ -210,11 +214,11 @@ func (ppu *Ppu) scanlineNext() {
 	if ppu.reg1&(ppuReg1BgDisp|ppuReg1SpDisp) != 0 {
 		if ppu.loopyV&0x7000 == 0x7000 {
 			ppu.loopyV &= 0x8fff
-			if ppu.loopyV&0x03E0 == 0x03A0 {
+			if ppu.loopyV&0x03e0 == 0x03a0 {
 				ppu.loopyV ^= 0x0800
 				ppu.loopyV &= 0xfc1f
 			} else {
-				if ppu.loopyV&0x03E0 == 0x03E0 {
+				if ppu.loopyV&0x03e0 == 0x03e0 {
 					ppu.loopyV &= 0xfc1f
 				} else {
 					ppu.loopyV += 0x0020
@@ -234,7 +238,7 @@ func (ppu *Ppu) isSprite0(scanline uint16) bool {
 	if ppu.reg2&ppuReg2SpHit != 0 {
 		return false
 	}
-	sp := uint16(ppu.sys.mem.spram[0])
+	sp := uint16(ppu.spram[0])
 	if ppu.reg0&ppuReg0Sp16 == 0 {
 		if scanline < sp+1 || scanline > sp+8 {
 			return false
@@ -248,7 +252,7 @@ func (ppu *Ppu) isSprite0(scanline uint16) bool {
 }
 
 func (ppu *Ppu) renderBgPal(attr byte, chL byte, chH byte, sl []uint32) {
-	slPal := ppu.sys.mem.bgPal[attr:]
+	slPal := ppu.bgPal[attr:]
 	c1 := ((chL >> 1) & 0x55) | (chH & 0xaa)
 	c2 := (chL & 0x55) | ((chH << 1) & 0xaa)
 	pal := ppu.palette
@@ -263,7 +267,8 @@ func (ppu *Ppu) renderBgPal(attr byte, chL byte, chH byte, sl []uint32) {
 }
 
 func (ppu *Ppu) scanlineRender(scanline uint8, bAllSp bool) {
-	mem := ppu.sys.mem
+
+	sys, mem := ppu.sys, ppu.sys.mem
 	bgs := [34]byte{}
 
 	if scanline == 1 {
@@ -272,32 +277,33 @@ func (ppu *Ppu) scanlineRender(scanline uint8, bAllSp bool) {
 	}
 
 	if ppu.reg1&ppuReg1BgDisp == 0 {
-		p, c := ppu.screen, (*ppu.palette)[mem.bgPal[0]]
+		p, c := ppu.screen, (*ppu.palette)[ppu.bgPal[0]]
 		for i, ie := ppu.iScanline, ppu.iScanline+ScreenWidth; i < ie; i++ {
 			(*p)[i] = c
 		}
-		if ppu.sys.renderMode == RenderModeTile {
-			ppu.sys.runCpu(1024)
+		if sys.renderMode == RenderModeTile {
+			sys.runCpu(1024)
 		}
 	} else {
 		sl := (*ppu.screen)[ppu.iScanline-ppu.loopySh:]
 		iNameTbl := (ppu.loopyV & 0x0fff) | 0x2000
+		bTileMode := sys.renderMode == RenderModeTile
 		var prevTile uint16
 		var prevAttr byte
 		if !ppu.bExtLatch {
-			iTileBase := (uint16(ppu.reg0&ppuReg0BgTbl) << 8) + ppu.loopyY
-			iAttr := (0x23c0 + (ppu.loopyV & 0x0c00) + ((ppu.loopyV & 0x0380) >> 4)) & 0x03ff
-			x := iNameTbl & 0x001f
-			attrSh := (iNameTbl & 0x0040) >> 4
+			iAttr := ((ppu.loopyV & 0x0380) >> 4) | 0x03c0
+			x := byte(iNameTbl) & 0x1f
+			attrSh := (byte(iNameTbl) & 0x40) >> 4
 			bank := mem.ppuBanks[iNameTbl>>10]
 			for i := byte(0); i < 33; i++ {
-				tile := iTileBase + uint16(bank[iNameTbl&0x03ff])<<4
-				if i != 0 && ppu.sys.renderMode == RenderModeTile {
-					ppu.sys.runCpu(32)
+				tile := (uint16(ppu.reg0&ppuReg0BgTbl) << 8) +
+					(uint16(bank[iNameTbl&0x03ff]) << 4) + ppu.loopyY
+				if i != 0 && bTileMode {
+					sys.runCpu(32)
 				}
-				attr := (byte(bank[iAttr+(x>>2)]>>((x&0x0002)+attrSh)) & 0x03) << 2
+				attr := ((bank[iAttr+uint16(x>>2)] >> ((x & 0x02) | attrSh)) & 0x03) << 2
 				if i != 0 && prevTile == tile && prevAttr == attr {
-					sl[8], sl[12] = sl[0], sl[4]
+					copy(sl[8:16], sl[0:8])
 					bgs[i] = bgs[i-1]
 				} else {
 					prevTile, prevAttr = tile, attr
@@ -308,13 +314,13 @@ func (ppu *Ppu) scanlineRender(scanline uint8, bAllSp bool) {
 				}
 				sl = sl[8:]
 				if ppu.bChrLatch {
-					ppu.sys.mapper.ppuChrLatch(tile)
+					sys.mapper.ppuChrLatch(tile)
 				}
 				x++
 				if x == 32 {
 					x = 0
 					iNameTbl ^= 0x041f
-					iAttr = 0x03c0 + ((iNameTbl & 0x0380) >> 4)
+					iAttr = ((iNameTbl & 0x0380) >> 4) | 0x03c0
 					bank = mem.ppuBanks[iNameTbl>>10]
 				} else {
 					iNameTbl++
@@ -324,15 +330,15 @@ func (ppu *Ppu) scanlineRender(scanline uint8, bAllSp bool) {
 			x := iNameTbl & 0x1f
 			var chH, chL, exattr byte
 			for i := byte(0); i < 33; i++ {
-				if i != 0 && ppu.sys.renderMode == RenderModeTile {
-					ppu.sys.runCpu(32)
+				if i != 0 && bTileMode {
+					sys.runCpu(32)
 				}
-				ppu.sys.mapper.ppuExtLatchX(i)
-				ppu.sys.mapper.ppuExtLatch(iNameTbl, &chL, &chH, &exattr)
+				sys.mapper.ppuExtLatchX(i)
+				sys.mapper.ppuExtLatch(iNameTbl, &chL, &chH, &exattr)
 				attr := exattr & 0x0c
 				tile := (uint16(chH) << 8) | uint16(chL)
 				if i != 0 && prevTile == tile && prevAttr == attr {
-					sl[8], sl[12] = sl[0], sl[4]
+					copy(sl[8:16], sl[0:8])
 					bgs[i] = bgs[i-1]
 				} else {
 					prevTile, prevAttr = tile, attr
@@ -351,7 +357,7 @@ func (ppu *Ppu) scanlineRender(scanline uint8, bAllSp bool) {
 		}
 
 		if ppu.reg1&ppuReg1BgClip == 0 {
-			p, c := ppu.screen, (*ppu.palette)[mem.bgPal[0]]
+			p, c := ppu.screen, (*ppu.palette)[ppu.bgPal[0]]
 			for i, ie := ppu.iScanline+8, ppu.iScanline+16; i < ie; i++ {
 				(*p)[i] = c
 			}
@@ -362,10 +368,10 @@ func (ppu *Ppu) scanlineRender(scanline uint8, bAllSp bool) {
 	if scanline > 239 || ppu.reg1&ppuReg1SpDisp == 0 {
 		return
 	}
-	sps, spram := [34]byte{}, mem.spram[:]
-	nSp, spH := 0, byte(7)
+	sps, spram := [34]byte{}, ppu.spram[:]
+	nSp, spM := 0, byte(7)
 	if ppu.reg0&ppuReg0Sp16 != 0 {
-		spH = 15
+		spM = 15
 	}
 	if ppu.reg1&ppuReg1SpClip == 0 {
 		sps[0] = 0xff
@@ -373,59 +379,62 @@ func (ppu *Ppu) scanlineRender(scanline uint8, bAllSp bool) {
 
 	for i, j := 0, 0; i < 64; i, j = i+1, j+4 {
 		spY, spTile, spAttr, spX := spram[j], spram[j+1], spram[j+2], spram[j+3]
-		spY = scanline - spY - 1
-		if spY&spH != spY {
+		spDy := scanline - spY - 1
+		if spY >= scanline || spDy > spM {
 			continue
 		}
 		var spAddr uint16
 		if ppu.reg0&ppuReg0Sp16 == 0 {
-			spAddr = (uint16(ppu.reg0&ppuReg0SpTbl) << 9) + (uint16(spTile) << 4)
+			spAddr = (uint16(ppu.reg0&ppuReg0SpTbl) << 9) | (uint16(spTile) << 4)
 			if spAttr&ppuSpAttrVMirror == 0 {
-				spAddr += uint16(spY)
+				spAddr += uint16(spDy)
 			} else {
-				spAddr += uint16(7 - spY)
+				spAddr += uint16(7 - spDy)
 			}
 		} else {
-			spAddr = (uint16(spTile&0x01) << 12) + (uint16(spTile&0xfe) << 4)
+			spAddr = (uint16(spTile&0x01) << 12) | (uint16(spTile&0xfe) << 4)
 			if spAttr&ppuSpAttrVMirror == 0 {
-				spAddr += uint16(((spY & 0x08) << 1) | (spY & 0x07))
+				spAddr += uint16(((spDy & 0x08) << 1) | (spDy & 0x07))
 			} else {
-				spAddr += uint16(((^spY & 0x08) << 1) | (7 - (spY & 0x07)))
+				spAddr += uint16(((^spDy & 0x08) << 1) | (7 - (spDy & 0x07)))
 			}
 		}
 
 		bank := mem.ppuBanks[spAddr>>10]
 		chL, chH := bank[spAddr&0x03ff], bank[(spAddr&0x03ff)+8]
 		if ppu.bChrLatch {
-			ppu.sys.mapper.ppuChrLatch(spAddr)
+			sys.mapper.ppuChrLatch(spAddr)
 		}
 		if spAttr&ppuSpAttrHMirror != 0 {
-			chL, chH = ppu.bitRev[chL], ppu.bitRev[chH]
+			chL, chH = ppu.spMirrorTable[chL], ppu.spMirrorTable[chH]
 		}
 		spPat := chL | chH
+
+		var maskBg byte
 		if i == 0 && ppu.reg2&ppuReg2SpHit == 0 {
-			pos := byte((uint16(spX&0xf8) + ((ppu.loopySh + uint16(spX&0x7)) & 0x08)) >> 3)
+			p16 := uint16(spX&0xf8) + ((ppu.loopySh + uint16(spX&0x7)) & 0x08)
+			pos := byte(p16 >> 3)
 			sh := 8 - byte((ppu.loopySh+uint16(spX))&0x07)
-			mask := byte(((uint16(bgs[pos]) << 8) | uint16(bgs[pos+1])) >> sh)
-			if spPat&mask != 0 {
+			m16 := (uint16(bgs[pos]) << 8) | uint16(bgs[pos+1])
+			maskBg = byte(m16 >> sh)
+			if spPat&maskBg != 0 {
 				ppu.reg2 |= ppuReg2SpHit
 			}
 		}
-
-		pos, sh := spX>>3, 8-(spX&0x07)
-		mask := byte(((uint16(sps[pos]) << 8) | uint16(sps[pos+1])) >> sh)
-		spPat &^= mask
-		wrt := uint16(spPat) << sh
-		sps[pos] |= byte(wrt >> 8)
-		sps[pos+1] |= byte(wrt)
+		{
+			pos, sh := spX>>3, 8-(spX&0x07)
+			m16 := (uint16(sps[pos]) << 8) | uint16(sps[pos+1])
+			maskSp := byte(m16 >> sh)
+			spPat &^= maskSp
+			wrt := uint16(spPat) << sh
+			sps[pos] |= byte(wrt >> 8)
+			sps[pos+1] |= byte(wrt)
+		}
 		if spAttr&ppuSpAttrPriority != 0 {
-			pos := byte((uint16(spX&0xf8) + ((ppu.loopySh + uint16(spX&0x7)) & 0x08)) >> 3)
-			sh := 8 - byte((ppu.loopySh+uint16(spX))&0x07)
-			mask := byte(((uint16(bgs[pos]) << 8) | uint16(bgs[pos+1])) >> sh)
-			spPat &^= mask
+			spPat &^= maskBg
 		}
 
-		slPal := mem.spPal[((spAttr & ppuSpAttrColor) << 2):]
+		slPal := ppu.spPal[((spAttr & ppuSpAttrColor) << 2):]
 		sl := (*ppu.screen)[ppu.iScanline+uint16(spX)+8:]
 		c1 := ((chL >> 1) & 0x55) | (chH & 0xaa)
 		c2 := (chL & 0x55) | ((chH << 1) & 0xaa)

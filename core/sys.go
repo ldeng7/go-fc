@@ -29,8 +29,8 @@ type tvFormat struct {
 	framePeriod       float32
 }
 
-var tvFormatPal = tvFormat{1662607.125, 312, 1278, 960, 318, 2, 1278 * 312, 50}
-var tvFormatNtsc = tvFormat{1789772.5, 262, 1364, 1024, 340, 4, 1364 * 262, 60}
+var tvFormatPal = tvFormat{1662607.125, 312, 1278, 960, 318, 2, 1278 * 312, 1000.0 / 50.0}
+var tvFormatNtsc = tvFormat{1789772.5, 262, 1364, 1024, 340, 4, 1364 * 262, 1000.0 / 60.0}
 
 type Sys struct {
 	rom    *Rom
@@ -159,7 +159,7 @@ func (sys *Sys) write(addr uint16, b byte) {
 }
 
 func (sys *Sys) runCpu(nCycleReq int64) {
-	sys.nCycleReq += nCycleReq // ldeng7: must test for next round of int64
+	sys.nCycleReq += nCycleReq
 	if nCycleReqCpu := (sys.nCycleReq - sys.nCycle) / 12; nCycleReqCpu > 0 {
 		exec := sys.cpu.run(nCycleReqCpu)
 		sys.apu.syncDpcm(exec)

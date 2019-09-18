@@ -3,7 +3,7 @@ package core
 import "fmt"
 
 type Mapper interface {
-	init()
+	reset()
 	read(addr uint16, data byte)
 	write(addr uint16, data byte)
 	readLow(addr uint16) byte
@@ -21,10 +21,10 @@ type Mapper interface {
 
 var mapperTable = [256]func(bm *baseMapper) Mapper{
 	newMapper00, newMapper01, newMapper02, newMapper03, newMapper04, newMapper05, newMapper06, newMapper07,
-	newMapper08, newMapper09, newMapper0a, newMapper0b, newMapper0c, newMapper0d, newMapper0e, newMapper0f,
+	newMapper08, newMapper09, newMapper0a, newMapper0b, newMapper0c, newMapper0d, nil, newMapper0f,
 	newMapper10, newMapper11, newMapper12, newMapper13, nil, newMapper15, newMapper16, newMapper17,
-	newMapper18, newMapper19, newMapper1a, newMapper1b, newMapper1c, newMapper1d, newMapper1e, newMapper1f,
-	newMapper20, newMapper21, newMapper22, newMapper23, newMapper24, newMapper25, newMapper26, newMapper27,
+	newMapper18, newMapper19, newMapper1a, newMapper1b, nil, nil, nil, nil,
+	newMapper20, newMapper21, newMapper22, nil, nil, nil, nil, nil,
 	newMapper28, newMapper29, newMapper2a, newMapper2b, newMapper2c, newMapper2d, newMapper2e, newMapper2f,
 	newMapper30, newMapper31, newMapper32, newMapper33, newMapper34, newMapper35, newMapper36, newMapper37,
 	newMapper38, newMapper39, newMapper3a, newMapper3b, newMapper3c, newMapper3d, newMapper3e, newMapper3f,
@@ -45,9 +45,9 @@ var mapperTable = [256]func(bm *baseMapper) Mapper{
 	newMapperb0, newMapperb1, newMapperb2, newMapperb3, newMapperb4, newMapperb5, newMapperb6, newMapperb7,
 	newMapperb8, newMapperb9, newMapperba, newMapperbb, newMapperbc, newMapperbd, newMapperbe, newMapperbf,
 	newMapperc0, newMapperc1, newMapperc2, newMapperc3, newMapperc4, newMapperc5, newMapperc6, newMapperc7,
-	newMapperc8, newMapperc9, newMapperca, newMappercb, newMappercc, newMappercd, newMapperce, newMappercf,
-	newMapperd0, newMapperd1, newMapperd2, newMapperd3, newMapperd4, newMapperd5, newMapperd6, newMapperd7,
-	newMapperd8, newMapperd9, newMapperda, newMapperdb, newMapperdc, newMapperdd, newMapperde, newMapperdf,
+	newMapperc8, newMapperc9, newMapperca, nil, nil, nil, nil, nil,
+	nil, nil, nil, nil, nil, nil, nil, nil,
+	nil, nil, nil, nil, nil, nil, newMapperde, newMapperdf,
 	newMappere0, newMappere1, newMappere2, newMappere3, newMappere4, newMappere5, newMappere6, newMappere7,
 	newMappere8, newMappere9, newMapperea, newMappereb, newMapperec, newMappered, newMapperee, newMapperef,
 	newMapperf0, newMapperf1, newMapperf2, newMapperf3, newMapperf4, newMapperf5, newMapperf6, newMapperf7,
@@ -71,11 +71,11 @@ func newMapper(sys *Sys) (Mapper, error) {
 		return nil, fmt.Errorf("unsupported mapper #%d", sys.rom.mapperNo)
 	}
 	m := f(bm)
-	m.init()
+	m.reset()
 	return m, nil
 }
 
-func (m *baseMapper) init()                          {}
+func (m *baseMapper) reset()                         {}
 func (m *baseMapper) read(addr uint16, data byte)    {}
 func (m *baseMapper) write(addr uint16, data byte)   {}
 func (m *baseMapper) readEx(addr uint16) byte        { return 0 }

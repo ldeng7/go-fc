@@ -74,9 +74,31 @@ func newPpu(sys *Sys) *Ppu {
 		ppu.spMirrorTable[i] = c
 	}
 
-	ppu.readBuf = 0xff
-	ppu.palette = &ppuPalette[0]
 	return ppu
+}
+
+func (ppu *Ppu) reset(clear bool) {
+	if clear {
+		l := len(ppu.bgPal)
+		for i := 0; i < l; i++ {
+			ppu.bgPal[i] = 0
+		}
+		l = len(ppu.spPal)
+		for i := 0; i < l; i++ {
+			ppu.spPal[i] = 0
+		}
+		l = len(ppu.spram)
+		for i := 0; i < l; i++ {
+			ppu.spram[i] = 0
+		}
+	}
+
+	ppu.reg0, ppu.reg1, ppu.reg2, ppu.reg3, ppu.readBuf = 0, 0, 0, 0, 0xff
+	ppu.loopyT, ppu.loopyV, ppu.loopyX, ppu.loopyY, ppu.loopySh = 0, 0, 0, 0, 0
+
+	ppu.toggle, ppu.bExtLatch, ppu.bChrLatch = false, false, false
+	ppu.iScanline = 0
+	ppu.palette = &ppuPalette[0]
 }
 
 func (ppu *Ppu) read(addr uint16) byte {

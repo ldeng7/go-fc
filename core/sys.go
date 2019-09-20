@@ -13,6 +13,7 @@ const (
 )
 
 type Conf struct {
+	PatchTyp   uint64
 	IsPal      bool
 	AllSprite  bool
 	RenderMode byte
@@ -73,7 +74,13 @@ func NewSys(file io.Reader, conf *Conf) (*Sys, error) {
 	sys.ppu = newPpu(sys)
 	sys.apu = newApu(sys)
 	sys.pad = newPad()
+
+	sys.reset(false)
 	return sys, nil
+}
+
+func (sys *Sys) Reset() {
+	sys.reset(true)
 }
 
 func (sys *Sys) GetFramePeriod() float32 {
@@ -86,6 +93,15 @@ func (sys *Sys) SetFrameBuffer(fb *FrameBuffer) {
 
 func (sys *Sys) SetPadKey(p byte, k byte) {
 	sys.pad.setKey(p, k)
+}
+
+func (sys *Sys) reset(clear bool) {
+	sys.mem.reset(clear)
+	sys.mapper.reset()
+	sys.cpu.reset()
+	sys.ppu.reset(clear)
+	sys.apu.reset()
+	sys.pad.reset()
 }
 
 func (sys *Sys) read(addr uint16) byte {

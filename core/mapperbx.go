@@ -1,57 +1,5 @@
 package core
 
-// 0xb0
-
-type mapperb0 struct {
-	baseMapper
-}
-
-func newMapperb0(bm *baseMapper) Mapper {
-	return &mapperb0{baseMapper: *bm}
-}
-
-func (m *mapperb0) reset() {
-}
-
-// 0xb1
-
-type mapperb1 struct {
-	baseMapper
-}
-
-func newMapperb1(bm *baseMapper) Mapper {
-	return &mapperb1{baseMapper: *bm}
-}
-
-func (m *mapperb1) reset() {
-}
-
-// 0xb2
-
-type mapperb2 struct {
-	baseMapper
-}
-
-func newMapperb2(bm *baseMapper) Mapper {
-	return &mapperb2{baseMapper: *bm}
-}
-
-func (m *mapperb2) reset() {
-}
-
-// 0xb3
-
-type mapperb3 struct {
-	baseMapper
-}
-
-func newMapperb3(bm *baseMapper) Mapper {
-	return &mapperb3{baseMapper: *bm}
-}
-
-func (m *mapperb3) reset() {
-}
-
 // 0xb4
 
 type mapperb4 struct {
@@ -63,6 +11,14 @@ func newMapperb4(bm *baseMapper) Mapper {
 }
 
 func (m *mapperb4) reset() {
+	m.mem.setProm32kBank(0)
+	if m.mem.nVrom1kPage != 0 {
+		m.mem.setVrom8kBank(0)
+	}
+}
+
+func (m *mapperb4) write(addr uint16, data byte) {
+	m.mem.setProm16kBank(6, uint32(data&0x07))
 }
 
 // 0xb5
@@ -76,6 +32,15 @@ func newMapperb5(bm *baseMapper) Mapper {
 }
 
 func (m *mapperb5) reset() {
+	m.mem.setProm32kBank(0)
+	m.mem.setVrom8kBank(0)
+}
+
+func (m *mapperb5) writeLow(addr uint16, data byte) {
+	if addr == 0x4120 {
+		m.mem.setProm32kBank(uint32(data&0x08) >> 3)
+		m.mem.setVrom8kBank(uint32(data & 0x07))
+	}
 }
 
 // 0xb6
@@ -128,6 +93,27 @@ func newMapperb9(bm *baseMapper) Mapper {
 }
 
 func (m *mapperb9) reset() {
+	switch m.mem.nProm8kPage >> 1 {
+	case 1:
+		m.mem.setProm16kBank(4, 0)
+		m.mem.setProm16kBank(6, 0)
+	case 2:
+		m.mem.setProm32kBank(0)
+	}
+	sl := m.mem.vram[0x0800:]
+	for i := 0; i < 0x0400; i++ {
+		sl[i] = 0xff
+	}
+}
+
+func (m *mapperb9) write(addr uint16, data byte) {
+	if data&0x03 != 0 {
+		m.mem.setVrom8kBank(0)
+	} else {
+		for i := byte(0); i < 8; i++ {
+			m.mem.setVram1kBank(i, 2)
+		}
+	}
 }
 
 // 0xba
@@ -167,6 +153,23 @@ func newMapperbc(bm *baseMapper) Mapper {
 }
 
 func (m *mapperbc) reset() {
+	if m.mem.nProm8kPage > 16 {
+		m.mem.setProm32kBank4(0, 1, 14, 15)
+	} else {
+		m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	}
+}
+
+func (m *mapperbc) write(addr uint16, data byte) {
+	if data&0x10 != 0 {
+		m.mem.setProm16kBank(4, uint32(data&0x07))
+	} else if data != 0 {
+		m.mem.setProm16kBank(4, uint32(data)+0x08)
+	} else if m.mem.nProm8kPage == 16 {
+		m.mem.setProm16kBank(4, 7)
+	} else {
+		m.mem.setProm16kBank(4, 8)
+	}
 }
 
 // 0xbd

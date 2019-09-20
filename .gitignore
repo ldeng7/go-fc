@@ -1,0 +1,4 @@
+/apps/gl_demo/gl_demo*
+/apps/wasm_demo/static/wasm_exec.js
+/apps/wasm_demo/static/*.wasm
+

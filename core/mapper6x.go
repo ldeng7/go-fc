@@ -4,6 +4,7 @@ package core
 
 type mapper60 struct {
 	baseMapper
+	r0, r1 byte
 }
 
 func newMapper60(bm *baseMapper) Mapper {
@@ -11,6 +12,26 @@ func newMapper60(bm *baseMapper) Mapper {
 }
 
 func (m *mapper60) reset() {
+	m.r0, m.r1 = 0, 0
+	m.mem.setProm32kBank(0)
+	m.mem.setCram4kBank(0, uint32(m.r0)<<2+uint32(m.r1))
+	m.mem.setCram4kBank(0, uint32(m.r0)<<2+0x03)
+	m.mem.setVramMirror(memVramMirror4L)
+}
+
+func (m *mapper60) write(addr uint16, data byte) {
+	m.mem.setProm32kBank(uint32(data & 0x03))
+	m.r0 = (data & 0x04) >> 2
+	m.mem.setCram4kBank(0, uint32(m.r0)<<2+uint32(m.r1))
+	m.mem.setCram4kBank(0, uint32(m.r0)<<2+0x03)
+}
+
+func (m *mapper60) ppuLatch(addr uint16) {
+	if (addr & 0xf000) == 0x2000 {
+		m.r1 = byte(addr>>8) & 0x03
+		m.mem.setCram4kBank(0, uint32(m.r0)<<2+uint32(m.r1))
+		m.mem.setCram4kBank(0, uint32(m.r0)<<2+0x03)
+	}
 }
 
 // 0x61
@@ -24,6 +45,21 @@ func newMapper61(bm *baseMapper) Mapper {
 }
 
 func (m *mapper61) reset() {
+	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	if m.mem.nVrom1kPage != 0 {
+		m.mem.setVrom8kBank(0)
+	}
+}
+
+func (m *mapper61) write(addr uint16, data byte) {
+	if addr < 0xc000 {
+		m.mem.setProm16kBank(6, uint32(data&0x0f))
+		if data&0x08 != 0 {
+			m.mem.setVramMirror(memVramMirrorV)
+		} else {
+			m.mem.setVramMirror(memVramMirrorH)
+		}
+	}
 }
 
 // 0x62
@@ -43,6 +79,7 @@ func (m *mapper62) reset() {
 
 type mapper63 struct {
 	baseMapper
+	c byte
 }
 
 func newMapper63(bm *baseMapper) Mapper {
@@ -50,6 +87,37 @@ func newMapper63(bm *baseMapper) Mapper {
 }
 
 func (m *mapper63) reset() {
+	m.c = 0
+	if m.mem.nProm8kPage > 2 {
+		m.mem.setProm32kBank4(0, 1, 2, 3)
+	} else if m.mem.nProm8kPage > 1 {
+		m.mem.setProm32kBank4(0, 1, 0, 1)
+	} else {
+		m.mem.setProm32kBank4(0, 0, 0, 0)
+	}
+	if m.mem.nVrom1kPage != 0 {
+		m.mem.setVrom8kBank(0)
+	}
+}
+
+func (m *mapper63) readEx(addr uint16) byte {
+	if addr == 0x4020 {
+		return m.c
+	}
+	return byte(addr >> 8)
+}
+
+func (m *mapper63) writeEx(addr uint16, data byte) {
+	switch addr {
+	case 0x4016:
+		if data&0x04 != 0 {
+			m.mem.setVrom8kBank(1)
+		} else {
+			m.mem.setVrom8kBank(0)
+		}
+	case 0x4020:
+		m.c = data
+	}
 }
 
 // 0x64
@@ -76,6 +144,18 @@ func newMapper65(bm *baseMapper) Mapper {
 }
 
 func (m *mapper65) reset() {
+	m.mem.setProm32kBank(0)
+	m.mem.setVrom8kBank(0)
+}
+
+func (m *mapper65) writeLow(addr uint16, data byte) {
+	if addr >= 0x6000 {
+		m.mem.setVrom8kBank(uint32(data & 0x03))
+	}
+}
+
+func (m *mapper65) write(addr uint16, data byte) {
+	m.mem.setVrom8kBank(uint32(data & 0x03))
 }
 
 // 0x66
@@ -154,6 +234,13 @@ func newMapper6b(bm *baseMapper) Mapper {
 }
 
 func (m *mapper6b) reset() {
+	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	m.mem.setVrom8kBank(0)
+}
+
+func (m *mapper6b) write(addr uint16, data byte) {
+	m.mem.setProm32kBank(uint32(data>>1) & 0x03)
+	m.mem.setVrom8kBank(uint32(data & 0x07))
 }
 
 // 0x6c
@@ -167,6 +254,12 @@ func newMapper6c(bm *baseMapper) Mapper {
 }
 
 func (m *mapper6c) reset() {
+	m.mem.setProm32kBank4(12, 13, 14, 15)
+	m.mem.setProm8kBank(3, 0)
+}
+
+func (m *mapper6c) write(addr uint16, data byte) {
+	m.mem.setProm8kBank(3, uint32(data))
 }
 
 // 0x6d

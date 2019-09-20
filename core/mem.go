@@ -48,13 +48,9 @@ func newMem(sys *Sys) *Mem {
 	rom := sys.rom
 	mem.prom = rom.prom
 	mem.vrom = rom.vrom
-	if rom.bTrainer {
-		copy(mem.wram[0x1000:0x1200], rom.trn)
-	}
 
 	mem.nProm8kPage = uint32(rom.nPromPage) << 1
 	mem.nVrom1kPage = uint32(rom.nVromPage) << 3
-
 	if mem.nVrom1kPage != 0 {
 		mem.setVrom8kBank(0)
 	} else {
@@ -69,6 +65,36 @@ func newMem(sys *Sys) *Mem {
 	}
 
 	return mem
+}
+
+func (mem *Mem) reset(clear bool) {
+	if !mem.sys.rom.bSaveRam {
+		l := len(mem.wram)
+		for i := 0; i < l; i++ {
+			mem.wram[i] = 0xff
+		}
+	}
+	if clear {
+		l := len(mem.ram)
+		for i := 0; i < l; i++ {
+			mem.ram[i] = 0
+		}
+		l = len(mem.vram)
+		for i := 0; i < l; i++ {
+			mem.vram[i] = 0
+		}
+		l = len(mem.cram)
+		for i := 0; i < l; i++ {
+			mem.cram[i] = 0
+		}
+		l = len(mem.cpuReg)
+		for i := 0; i < l; i++ {
+			mem.cpuReg[i] = 0
+		}
+	}
+	if mem.sys.rom.bTrainer {
+		copy(mem.wram[0x1000:0x1200], mem.sys.rom.trn)
+	}
 }
 
 func (mem *Mem) setCpuBank(iBank byte, slice []byte, typ byte) {

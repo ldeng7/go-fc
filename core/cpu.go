@@ -46,13 +46,6 @@ func newCpu(sys *Sys) *Cpu {
 	cpu.ram = sys.mem.ram[:]
 	cpu.banks = sys.mem.cpuBanks[:]
 
-	bank := cpu.banks[7]
-	cpu.regPC = (uint16(bank[0x1ffd]) << 8) | uint16(bank[0x1ffc])
-	cpu.regA, cpu.regX, cpu.regY, cpu.regS = 0, 0, 0, 0xff
-	cpu.regP = cpuRegZ | cpuRegR
-	cpu.intr = 0
-	cpu.nCycle, cpu.nCycleDma = 9223372036834775808, 0
-
 	cpu.znTable[0] = cpuRegZ
 	for i := 1; i < 256; i++ {
 		if i&0x80 == 0 {
@@ -63,6 +56,15 @@ func newCpu(sys *Sys) *Cpu {
 	}
 
 	return cpu
+}
+
+func (cpu *Cpu) reset() {
+	bank := cpu.banks[7]
+	cpu.regPC = (uint16(bank[0x1ffd]) << 8) | uint16(bank[0x1ffc])
+	cpu.regA, cpu.regX, cpu.regY, cpu.regS = 0, 0, 0, 0xff
+	cpu.regP = cpuRegZ | cpuRegR
+	cpu.intr = 0
+	cpu.nCycle, cpu.nCycleDma = 0, 0
 }
 
 func (cpu *Cpu) read(addr uint16) byte {

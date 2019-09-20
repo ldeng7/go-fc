@@ -35,14 +35,14 @@ var mapperTable = [256]func(bm *baseMapper) Mapper{
 	newMapper60, newMapper61, newMapper62, newMapper63, newMapper64, newMapper65, newMapper66, newMapper67,
 	newMapper68, newMapper69, newMapper6a, newMapper6b, newMapper6c, newMapper6d, newMapper6e, newMapper6f,
 	newMapper70, newMapper71, newMapper72, newMapper73, newMapper74, newMapper75, newMapper76, newMapper77,
-	newMapper78, newMapper79, newMapper7a, newMapper7b, newMapper7c, newMapper7d, newMapper7e, newMapper7f,
-	newMapper80, newMapper81, newMapper82, newMapper83, newMapper84, newMapper85, newMapper86, newMapper87,
-	newMapper88, newMapper89, newMapper8a, newMapper8b, newMapper8c, newMapper8d, newMapper8e, newMapper8f,
-	newMapper90, newMapper91, newMapper92, newMapper93, newMapper94, newMapper95, newMapper96, newMapper97,
-	newMapper98, newMapper99, newMapper9a, newMapper9b, newMapper9c, newMapper9d, newMapper9e, newMapper9f,
+	newMapper78, newMapper79, newMapper7a, nil, nil, nil, nil, nil,
+	nil, nil, nil, nil, nil, newMapper85, newMapper86, newMapper87,
+	nil, nil, nil, nil, newMapper8c, newMapper8d, newMapper8e, nil,
+	nil, nil, nil, nil, nil, nil, nil, newMapper97,
+	nil, nil, nil, nil, nil, nil, nil, nil,
 	newMappera0, newMappera1, newMappera2, newMappera3, newMappera4, newMappera5, newMappera6, newMappera7,
-	newMappera8, newMappera9, newMapperaa, newMapperab, newMapperac, newMapperad, newMapperae, newMapperaf,
-	newMapperb0, newMapperb1, newMapperb2, newMapperb3, newMapperb4, newMapperb5, newMapperb6, newMapperb7,
+	nil, nil, nil, nil, nil, nil, nil, nil,
+	nil, nil, nil, nil, newMapperb4, newMapperb5, newMapperb6, newMapperb7,
 	newMapperb8, newMapperb9, newMapperba, newMapperbb, newMapperbc, newMapperbd, newMapperbe, newMapperbf,
 	newMapperc0, newMapperc1, newMapperc2, newMapperc3, newMapperc4, newMapperc5, newMapperc6, newMapperc7,
 	newMapperc8, newMapperc9, newMapperca, nil, nil, nil, nil, nil,
@@ -71,7 +71,6 @@ func newMapper(sys *Sys) (Mapper, error) {
 		return nil, fmt.Errorf("unsupported mapper #%d", sys.rom.mapperNo)
 	}
 	m := f(bm)
-	m.reset()
 	return m, nil
 }
 

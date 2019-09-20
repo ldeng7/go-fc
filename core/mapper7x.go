@@ -141,69 +141,12 @@ func newMapper7a(bm *baseMapper) Mapper {
 }
 
 func (m *mapper7a) reset() {
+	m.mem.setProm32kBank(0)
 }
 
-// 0x7b
-
-type mapper7b struct {
-	baseMapper
-}
-
-func newMapper7b(bm *baseMapper) Mapper {
-	return &mapper7b{baseMapper: *bm}
-}
-
-func (m *mapper7b) reset() {
-}
-
-// 0x7c
-
-type mapper7c struct {
-	baseMapper
-}
-
-func newMapper7c(bm *baseMapper) Mapper {
-	return &mapper7c{baseMapper: *bm}
-}
-
-func (m *mapper7c) reset() {
-}
-
-// 0x7d
-
-type mapper7d struct {
-	baseMapper
-}
-
-func newMapper7d(bm *baseMapper) Mapper {
-	return &mapper7d{baseMapper: *bm}
-}
-
-func (m *mapper7d) reset() {
-}
-
-// 0x7e
-
-type mapper7e struct {
-	baseMapper
-}
-
-func newMapper7e(bm *baseMapper) Mapper {
-	return &mapper7e{baseMapper: *bm}
-}
-
-func (m *mapper7e) reset() {
-}
-
-// 0x7f
-
-type mapper7f struct {
-	baseMapper
-}
-
-func newMapper7f(bm *baseMapper) Mapper {
-	return &mapper7f{baseMapper: *bm}
-}
-
-func (m *mapper7f) reset() {
+func (m *mapper7a) write(addr uint16, data byte) {
+	if addr == 0x6000 {
+		m.mem.setVrom4kBank(0, uint32(data&0x07))
+		m.mem.setVrom4kBank(4, uint32(data&0x70)>>4)
+	}
 }

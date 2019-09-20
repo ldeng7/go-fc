@@ -1,70 +1,5 @@
 package core
 
-// 0x80
-
-type mapper80 struct {
-	baseMapper
-}
-
-func newMapper80(bm *baseMapper) Mapper {
-	return &mapper80{baseMapper: *bm}
-}
-
-func (m *mapper80) reset() {
-}
-
-// 0x81
-
-type mapper81 struct {
-	baseMapper
-}
-
-func newMapper81(bm *baseMapper) Mapper {
-	return &mapper81{baseMapper: *bm}
-}
-
-func (m *mapper81) reset() {
-}
-
-// 0x82
-
-type mapper82 struct {
-	baseMapper
-}
-
-func newMapper82(bm *baseMapper) Mapper {
-	return &mapper82{baseMapper: *bm}
-}
-
-func (m *mapper82) reset() {
-}
-
-// 0x83
-
-type mapper83 struct {
-	baseMapper
-}
-
-func newMapper83(bm *baseMapper) Mapper {
-	return &mapper83{baseMapper: *bm}
-}
-
-func (m *mapper83) reset() {
-}
-
-// 0x84
-
-type mapper84 struct {
-	baseMapper
-}
-
-func newMapper84(bm *baseMapper) Mapper {
-	return &mapper84{baseMapper: *bm}
-}
-
-func (m *mapper84) reset() {
-}
-
 // 0x85
 
 type mapper85 struct {
@@ -76,6 +11,16 @@ func newMapper85(bm *baseMapper) Mapper {
 }
 
 func (m *mapper85) reset() {
+	m.mem.setProm32kBank(0)
+	m.mem.setVrom8kBank(0)
+}
+
+func (m *mapper85) writeLow(addr uint16, data byte) {
+	if addr == 0x4120 {
+		m.mem.setProm32kBank(uint32(data&0x04) >> 2)
+		m.mem.setVrom8kBank(uint32(data & 0x03))
+	}
+	m.mem.cpuBanks[addr>>13][addr&0x1fff] = data
 }
 
 // 0x86
@@ -104,58 +49,6 @@ func newMapper87(bm *baseMapper) Mapper {
 func (m *mapper87) reset() {
 }
 
-// 0x88
-
-type mapper88 struct {
-	baseMapper
-}
-
-func newMapper88(bm *baseMapper) Mapper {
-	return &mapper88{baseMapper: *bm}
-}
-
-func (m *mapper88) reset() {
-}
-
-// 0x89
-
-type mapper89 struct {
-	baseMapper
-}
-
-func newMapper89(bm *baseMapper) Mapper {
-	return &mapper89{baseMapper: *bm}
-}
-
-func (m *mapper89) reset() {
-}
-
-// 0x8a
-
-type mapper8a struct {
-	baseMapper
-}
-
-func newMapper8a(bm *baseMapper) Mapper {
-	return &mapper8a{baseMapper: *bm}
-}
-
-func (m *mapper8a) reset() {
-}
-
-// 0x8b
-
-type mapper8b struct {
-	baseMapper
-}
-
-func newMapper8b(bm *baseMapper) Mapper {
-	return &mapper8b{baseMapper: *bm}
-}
-
-func (m *mapper8b) reset() {
-}
-
 // 0x8c
 
 type mapper8c struct {
@@ -167,6 +60,15 @@ func newMapper8c(bm *baseMapper) Mapper {
 }
 
 func (m *mapper8c) reset() {
+	m.mem.setProm32kBank(0)
+	if m.mem.nVrom1kPage != 0 {
+		m.mem.setVrom8kBank(0)
+	}
+}
+
+func (m *mapper8c) writeLow(addr uint16, data byte) {
+	m.mem.setProm32kBank(uint32(data&0xf0) >> 4)
+	m.mem.setVrom8kBank(uint32(data & 0x0f))
 }
 
 // 0x8d
@@ -193,17 +95,4 @@ func newMapper8e(bm *baseMapper) Mapper {
 }
 
 func (m *mapper8e) reset() {
-}
-
-// 0x8f
-
-type mapper8f struct {
-	baseMapper
-}
-
-func newMapper8f(bm *baseMapper) Mapper {
-	return &mapper8f{baseMapper: *bm}
-}
-
-func (m *mapper8f) reset() {
 }

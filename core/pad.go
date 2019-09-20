@@ -21,6 +21,12 @@ func newPad() *Pad {
 	return &Pad{}
 }
 
+func (pad *Pad) reset() {
+	pad.bStrobe = false
+	pad.b1, pad.b2 = 0, 0
+	pad.b1u, pad.b2u = 0, 0
+}
+
 func (pad *Pad) read(addr uint16) byte {
 	var b byte
 	switch addr {

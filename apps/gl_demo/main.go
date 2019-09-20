@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"os"
 	"path"
 	"runtime"
@@ -9,6 +10,25 @@ import (
 	"github.com/go-gl/glfw/v3.1/glfw"
 	"github.com/ldeng7/go-fc/core"
 )
+
+type conf struct {
+	romPath  string
+	patchTyp uint64
+	isPal    bool
+}
+
+func parseArgs() *conf {
+	c := &conf{}
+	flag.StringVar(&c.romPath, "rom", "", "rom path")
+	flag.Uint64Var(&c.patchTyp, "patch", 0, "patch type")
+	flag.BoolVar(&c.isPal, "pal", false, "run in PAL mode instead of NTSC")
+	flag.Parse()
+	if len(c.romPath) == 0 {
+		flag.PrintDefaults()
+		return nil
+	}
+	return c
+}
 
 const (
 	screenWidth  = core.ScreenWidth * 2
@@ -42,7 +62,7 @@ type App struct {
 	graphic *Graphic
 }
 
-func newApp() (*App, error) {
+func newApp(c *conf) (*App, error) {
 	a := &App{}
 	var err error
 	defer func() {
@@ -51,31 +71,43 @@ func newApp() (*App, error) {
 		}
 	}()
 
-	f, err := os.Open(os.Args[1])
+	f, err := os.Open(c.romPath)
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
 		f.Close()
 	}()
-	sysConf := &core.Conf{
-		IsPal: false,
+	ac := &core.Conf{
+		PatchTyp:  c.patchTyp,
+		IsPal:     c.isPal,
+		AllSprite: true,
 	}
-	if a.sys, err = core.NewSys(f, sysConf); err != nil {
+	if a.sys, err = core.NewSys(f, ac); err != nil {
 		return nil, err
 	}
 
-	_, filename := path.Split(os.Args[1])
+	_, filename := path.Split(c.romPath)
 	if a.graphic, err = newGraphic(filename); err != nil {
 		return nil, err
 	}
 
+	a.graphic.window.SetKeyCallback(a.onKey)
 	return a, nil
 }
 
 func (a *App) deInit() {
 	if a.graphic != nil {
 		a.graphic.deInit()
+	}
+}
+
+func (a *App) onKey(_ *glfw.Window, key glfw.Key, _ int, action glfw.Action, _ glfw.ModifierKey) {
+	if action == glfw.Press {
+		switch key {
+		case glfw.KeyEscape:
+			a.sys.Reset()
+		}
 	}
 }
 
@@ -99,7 +131,7 @@ func (a *App) mainLoop() {
 		sys.SetPadKey(2, pk2)
 
 		gl.Clear(gl.COLOR_BUFFER_BIT)
-		sys.SetFrameBuffer(a.graphic.fbf)
+		sys.SetFrameBuffer(a.graphic.fb)
 		a.t = glfw.GetTime()
 		for ; a.te < a.t; a.te += period {
 			sys.RunFrame()
@@ -114,7 +146,11 @@ func init() {
 }
 
 func main() {
-	app, err := newApp()
+	c := parseArgs()
+	if nil == c {
+		return
+	}
+	app, err := newApp(c)
 	if err != nil {
 		println(err.Error())
 		return

@@ -11,6 +11,9 @@ func newApu(sys *Sys) *Apu {
 	return apu
 }
 
+func (apu *Apu) reset() {
+}
+
 func (apu *Apu) read(addr uint16) byte {
 	return 0
 }

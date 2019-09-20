@@ -37,12 +37,33 @@ func newMapper22(bm *baseMapper) Mapper {
 }
 
 func (m *mapper22) reset() {
+	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	if m.mem.nVrom1kPage != 0 {
+		m.mem.setVrom8kBank(0)
+	}
+}
+
+func (m *mapper22) writeLow(addr uint16, data byte) {
+	switch addr {
+	case 0x7ffd:
+		m.mem.setProm32kBank(uint32(data))
+	case 0x7ffe:
+		m.mem.setVrom4kBank(0, uint32(data))
+	case 0x7fff:
+		m.mem.setVrom4kBank(4, uint32(data))
+	}
+}
+
+func (m *mapper22) write(addr uint16, data byte) {
+	m.mem.setProm32kBank(uint32(data))
 }
 
 // 0x28
 
 type mapper28 struct {
 	baseMapper
+	irqEn   bool
+	irqLine int32
 }
 
 func newMapper28(bm *baseMapper) Mapper {
@@ -50,12 +71,40 @@ func newMapper28(bm *baseMapper) Mapper {
 }
 
 func (m *mapper28) reset() {
+	m.mem.setProm8kBank(3, 6)
+	m.mem.setProm32kBank4(4, 5, 0, 7)
+	if m.mem.nVrom1kPage != 0 {
+		m.mem.setVrom8kBank(0)
+	}
+}
+
+func (m *mapper28) write(addr uint16, data byte) {
+	switch addr & 0xe000 {
+	case 0x8000:
+		m.irqEn = false
+		m.sys.cpu.intr &^= cpuIntrTypMapper
+	case 0xa000:
+		m.irqEn, m.irqLine = true, 37
+		m.sys.cpu.intr &^= cpuIntrTypMapper
+	case 0xe000:
+		m.mem.setProm8kBank(6, uint32(data)&0x07)
+	}
+}
+
+func (m *mapper28) hSync(scanline uint16) {
+	if m.irqEn {
+		m.irqLine--
+		if m.irqLine <= 0 {
+			m.sys.cpu.intr |= cpuIntrTypMapper
+		}
+	}
 }
 
 // 0x29
 
 type mapper29 struct {
 	baseMapper
+	r0, r1 byte
 }
 
 func newMapper29(bm *baseMapper) Mapper {
@@ -63,6 +112,31 @@ func newMapper29(bm *baseMapper) Mapper {
 }
 
 func (m *mapper29) reset() {
+	m.mem.setProm32kBank(0)
+	if m.mem.nVrom1kPage != 0 {
+		m.mem.setVrom8kBank(0)
+	}
+}
+
+func (m *mapper29) writeLow(addr uint16, data byte) {
+	if addr >= 0x6000 && addr < 0x6800 {
+		m.mem.setProm32kBank(uint32(addr) & 0x07)
+		m.r0 = byte(addr) & 0x04
+		m.r1 = (m.r1 & 0x03) | (byte(addr>>1) & 0x0c)
+		m.mem.setVrom8kBank(uint32(m.r1))
+		if addr&0x20 != 0 {
+			m.mem.setVramMirror(memVramMirrorH)
+		} else {
+			m.mem.setVramMirror(memVramMirrorV)
+		}
+	}
+}
+
+func (m *mapper29) write(addr uint16, data byte) {
+	if m.r0 != 0 {
+		m.r1 = (m.r1 & 0x0c) | (byte(addr) & 0x03)
+		m.mem.setVrom8kBank(uint32(m.r1))
+	}
 }
 
 // 0x2a

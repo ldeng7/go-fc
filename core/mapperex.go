@@ -209,13 +209,40 @@ func (m *mappere5) write(addr uint16, data byte) {
 
 type mappere6 struct {
 	baseMapper
+	idx bool
 }
 
 func newMappere6(bm *baseMapper) Mapper {
-	return &mappere6{baseMapper: *bm}
+	return &mappere6{baseMapper: *bm, idx: true}
 }
 
 func (m *mappere6) reset() {
+	m.idx = !m.idx
+	if m.idx {
+		m.mem.setProm32kBank4(0, 1, 14, 15)
+	} else {
+		m.mem.setProm32kBank4(16, 17, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	}
+}
+
+func (m *mappere6) write(addr uint16, data byte) {
+	b := uint32(data)
+	if m.idx {
+		m.mem.setProm16kBank(4, b&0x07)
+	} else {
+		if data&0x20 != 0 {
+			m.mem.setProm16kBank(4, (b&0x1f)+8)
+			m.mem.setProm16kBank(6, (b&0x1f)+8)
+		} else {
+			m.mem.setProm16kBank(4, (b&0x1e)+8)
+			m.mem.setProm16kBank(6, (b&0x1e)+9)
+		}
+		if data&0x40 != 0 {
+			m.mem.setVramMirror(memVramMirrorV)
+		} else {
+			m.mem.setVramMirror(memVramMirrorH)
+		}
+	}
 }
 
 // 0xe7

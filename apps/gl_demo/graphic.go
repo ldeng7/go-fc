@@ -12,8 +12,8 @@ type Graphic struct {
 	glfwInited bool
 	window     *glfw.Window
 	texture    uint32
-	fbf, fbb   *core.FrameBuffer
-	fbfp, fbbp unsafe.Pointer
+	fb         *core.FrameBuffer
+	fbp        unsafe.Pointer
 }
 
 func newGraphic(title string) (*Graphic, error) {
@@ -50,8 +50,8 @@ func newGraphic(title string) (*Graphic, error) {
 	gl.BindTexture(gl.TEXTURE_2D, 0)
 	gl.ClearColor(0, 0, 0, 1)
 
-	g.fbf, g.fbb = &core.FrameBuffer{}, &core.FrameBuffer{}
-	g.fbfp, g.fbbp = gl.Ptr((*g.fbf)[:]), gl.Ptr((*g.fbb)[:])
+	g.fb = &core.FrameBuffer{}
+	g.fbp = unsafe.Pointer(g.fb)
 	return g, nil
 }
 
@@ -64,7 +64,8 @@ func (g *Graphic) deInit() {
 func (g *Graphic) glStepPost() {
 	gl.BindTexture(gl.TEXTURE_2D, g.texture)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, core.ScreenWidth, core.ScreenHeight,
-		0, gl.RGBA, gl.UNSIGNED_BYTE, g.fbfp)
+		0, gl.RGBA, gl.UNSIGNED_BYTE, g.fbp)
+
 	gl.Begin(gl.QUADS)
 	gl.TexCoord2f(0, 1)
 	gl.Vertex2f(-1, -1)
@@ -75,9 +76,7 @@ func (g *Graphic) glStepPost() {
 	gl.TexCoord2f(0, 0)
 	gl.Vertex2f(-1, 1)
 	gl.End()
-	gl.BindTexture(gl.TEXTURE_2D, 0)
 
+	gl.BindTexture(gl.TEXTURE_2D, 0)
 	g.window.SwapBuffers()
-	//g.fbf, g.fbb = g.fbb, g.fbf
-	//g.fbfp, g.fbbp = g.fbbp, g.fbfp
 }

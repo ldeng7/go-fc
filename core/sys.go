@@ -91,8 +91,8 @@ func (sys *Sys) SetFrameBuffer(fb *FrameBuffer) {
 	sys.ppu.screen = fb
 }
 
-func (sys *Sys) SetPadKey(p byte, k byte) {
-	sys.pad.setKey(p, k)
+func (sys *Sys) SetPadKey(p byte, k byte, down bool) {
+	sys.pad.setKey(p, k, down)
 }
 
 func (sys *Sys) reset(clear bool) {
@@ -261,6 +261,7 @@ func (sys *Sys) RunFrame() {
 		switch sys.scanline {
 		case 240:
 			sys.mapper.vSync()
+			sys.pad.vSync()
 		case 241:
 			ppu.reg2 |= ppuReg2VBlank
 			if ppu.reg0&ppuReg0VBlank != 0 {

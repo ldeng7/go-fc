@@ -35,25 +35,25 @@ const (
 	screenHeight = core.ScreenHeight * 2
 )
 
-var keyMapP1 = map[byte]glfw.Key{
-	core.PadKeyUp:     glfw.KeyW,
-	core.PadKeyDown:   glfw.KeyS,
-	core.PadKeyLeft:   glfw.KeyA,
-	core.PadKeyRight:  glfw.KeyD,
-	core.PadKeyStart:  glfw.KeySpace,
-	core.PadKeySelect: glfw.KeyLeftAlt,
-	core.PadKeyA:      glfw.KeyK,
-	core.PadKeyB:      glfw.KeyJ,
+var keyMapP1 = map[glfw.Key]byte{
+	glfw.KeyW:           core.PadKeyUp,
+	glfw.KeyS:           core.PadKeyDown,
+	glfw.KeyA:           core.PadKeyLeft,
+	glfw.KeyD:           core.PadKeyRight,
+	glfw.KeySpace:       core.PadKeyStart,
+	glfw.KeyLeftControl: core.PadKeySelect,
+	glfw.KeyK:           core.PadKeyA,
+	glfw.KeyJ:           core.PadKeyB,
 }
-var keyMapP2 = map[byte]glfw.Key{
-	core.PadKeyUp:     glfw.KeyUp,
-	core.PadKeyDown:   glfw.KeyDown,
-	core.PadKeyLeft:   glfw.KeyLeft,
-	core.PadKeyRight:  glfw.KeyRight,
-	core.PadKeyStart:  glfw.KeyKPEnter,
-	core.PadKeySelect: glfw.KeyKPDecimal,
-	core.PadKeyA:      glfw.KeyKP2,
-	core.PadKeyB:      glfw.KeyKP1,
+var keyMapP2 = map[glfw.Key]byte{
+	glfw.KeyUp:        core.PadKeyUp,
+	glfw.KeyDown:      core.PadKeyDown,
+	glfw.KeyLeft:      core.PadKeyLeft,
+	glfw.KeyRight:     core.PadKeyRight,
+	glfw.KeyKPEnter:   core.PadKeyStart,
+	glfw.KeyKPDecimal: core.PadKeySelect,
+	glfw.KeyKP2:       core.PadKeyA,
+	glfw.KeyKP1:       core.PadKeyB,
 }
 
 type App struct {
@@ -103,10 +103,25 @@ func (a *App) deInit() {
 }
 
 func (a *App) onKey(_ *glfw.Window, key glfw.Key, _ int, action glfw.Action, _ glfw.ModifierKey) {
-	if action == glfw.Press {
-		switch key {
-		case glfw.KeyEscape:
+	switch key {
+	case glfw.KeyEscape:
+		if action == glfw.Press {
 			a.sys.Reset()
+		}
+	default:
+		switch action {
+		case glfw.Press:
+			if pk, ok := keyMapP1[key]; ok {
+				a.sys.SetPadKey(1, pk, true)
+			} else if pk, ok := keyMapP2[key]; ok {
+				a.sys.SetPadKey(2, pk, true)
+			}
+		case glfw.Release:
+			if pk, ok := keyMapP1[key]; ok {
+				a.sys.SetPadKey(1, pk, false)
+			} else if pk, ok := keyMapP2[key]; ok {
+				a.sys.SetPadKey(2, pk, false)
+			}
 		}
 	}
 }
@@ -116,20 +131,6 @@ func (a *App) mainLoop() {
 	period := float64(sys.GetFramePeriod()) / 1000.0
 	a.te = glfw.GetTime()
 	for !window.ShouldClose() {
-		var pk1, pk2 byte
-		for pk, k := range keyMapP1 {
-			if window.GetKey(k) == glfw.Press {
-				pk1 |= pk
-			}
-		}
-		sys.SetPadKey(1, pk1)
-		for pk, k := range keyMapP2 {
-			if window.GetKey(k) == glfw.Press {
-				pk2 |= pk
-			}
-		}
-		sys.SetPadKey(2, pk2)
-
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 		sys.SetFrameBuffer(a.graphic.fb)
 		a.t = glfw.GetTime()

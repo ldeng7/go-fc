@@ -13,6 +13,7 @@ const (
 
 type Pad struct {
 	bStrobe  bool
+	b1p, b2p byte
 	b1, b2   byte
 	b1u, b2u byte
 }
@@ -23,6 +24,7 @@ func newPad() *Pad {
 
 func (pad *Pad) reset() {
 	pad.bStrobe = false
+	pad.b1p, pad.b2p = 0, 0
 	pad.b1, pad.b2 = 0, 0
 	pad.b1u, pad.b2u = 0, 0
 }
@@ -51,11 +53,23 @@ func (pad *Pad) write(addr uint16, data byte) {
 	}
 }
 
-func (pad *Pad) setKey(p byte, k byte) {
+func (pad *Pad) vSync() {
+	pad.b1, pad.b2 = pad.b1p, pad.b2p
+}
+
+func (pad *Pad) setKey(p byte, k byte, down bool) {
 	switch p {
 	case 1:
-		pad.b1 = k
+		if down {
+			pad.b1p |= k
+		} else {
+			pad.b1p &^= k
+		}
 	case 2:
-		pad.b2 = k
+		if down {
+			pad.b2p |= k
+		} else {
+			pad.b2p &^= k
+		}
 	}
 }

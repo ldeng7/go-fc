@@ -1,8 +1,6 @@
 package core
 
-import (
-	"io"
-)
+import "io"
 
 const (
 	RenderModePre byte = iota
@@ -13,25 +11,25 @@ const (
 )
 
 type Conf struct {
-	PatchTyp   uint64
-	IsPal      bool
-	AllSprite  bool
-	RenderMode byte
+	PatchTyp      uint64
+	IsPal         bool
+	AllSprite     bool
+	RenderMode    byte
+	AudioSampRate uint16
 }
 
 type tvFormat struct {
-	cpuClock          float32
+	cpuRate           float32
 	nScanline         uint16
 	nScanlineCycle    int64
 	nHDrawCycle       int64
 	nHBlankCycle      int64
 	nScanlineEndCycle int64
-	nFrameCycle       int64
 	framePeriod       float32
 }
 
-var tvFormatPal = tvFormat{1662607.125, 312, 1278, 960, 318, 2, 1278 * 312, 1000.0 / 50.0}
-var tvFormatNtsc = tvFormat{1789772.5, 262, 1364, 1024, 340, 4, 1364 * 262, 1000.0 / 60.0}
+var tvFormatPal = tvFormat{1662607.125, 312, 1278, 960, 318, 2, 1000.0 / 50.0}
+var tvFormatNtsc = tvFormat{1789772.5, 262, 1364, 1024, 340, 4, 1000.0 / 60.0}
 
 type Sys struct {
 	rom    *Rom
@@ -75,12 +73,12 @@ func NewSys(file io.Reader, conf *Conf) (*Sys, error) {
 	sys.apu = newApu(sys)
 	sys.pad = newPad()
 
-	sys.reset(false)
+	sys.reset(true)
 	return sys, nil
 }
 
 func (sys *Sys) Reset() {
-	sys.reset(true)
+	sys.reset(false)
 }
 
 func (sys *Sys) GetFramePeriod() float32 {
@@ -95,12 +93,16 @@ func (sys *Sys) SetPadKey(p byte, k byte, down bool) {
 	sys.pad.setKey(p, k, down)
 }
 
-func (sys *Sys) reset(clear bool) {
-	sys.mem.reset(clear)
+func (sys *Sys) GetAudioDataQueue() *ApuDataQueue {
+	return &sys.apu.dq
+}
+
+func (sys *Sys) reset(init bool) {
+	sys.mem.reset(init)
 	sys.mapper.reset()
 	sys.cpu.reset()
-	sys.ppu.reset(clear)
-	sys.apu.reset()
+	sys.ppu.reset(init)
+	sys.apu.reset(init)
 	sys.pad.reset()
 }
 
@@ -178,7 +180,7 @@ func (sys *Sys) runCpu(nCycleReq int64) {
 	sys.nCycleReq += nCycleReq
 	if nCycleReqCpu := (sys.nCycleReq - sys.nCycle) / 12; nCycleReqCpu > 0 {
 		exec := sys.cpu.run(nCycleReqCpu)
-		sys.apu.syncDpcm(exec)
+		sys.apu.sync(int32(exec))
 		sys.nCycle += exec * 12
 	}
 }
@@ -279,4 +281,6 @@ func (sys *Sys) RunFrame() {
 			sys.runCpu(sys.tvFormat.nHBlankCycle)
 		}
 	}
+
+	sys.apu.render()
 }

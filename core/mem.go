@@ -67,14 +67,14 @@ func newMem(sys *Sys) *Mem {
 	return mem
 }
 
-func (mem *Mem) reset(clear bool) {
+func (mem *Mem) reset(init bool) {
 	if !mem.sys.rom.bSaveRam {
 		l := len(mem.wram)
 		for i := 0; i < l; i++ {
 			mem.wram[i] = 0xff
 		}
 	}
-	if clear {
+	if !init {
 		l := len(mem.ram)
 		for i := 0; i < l; i++ {
 			mem.ram[i] = 0

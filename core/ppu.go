@@ -77,8 +77,8 @@ func newPpu(sys *Sys) *Ppu {
 	return ppu
 }
 
-func (ppu *Ppu) reset(clear bool) {
-	if clear {
+func (ppu *Ppu) reset(init bool) {
+	if !init {
 		l := len(ppu.bgPal)
 		for i := 0; i < l; i++ {
 			ppu.bgPal[i] = 0

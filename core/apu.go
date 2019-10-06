@@ -114,10 +114,7 @@ func newApu(sys *Sys) *Apu {
 	apu.ch1 = &apuChanRect{apu: apu, enMask: 0x02}
 	apu.ch2 = &apuChanTri{apu: apu}
 	apu.ch3 = &apuChanNoise{apu: apu}
-	apu.ch4 = &apuChanDpcm{apu: apu, cycleTbl: &apuDpcmCyclesNtsc}
-	if sys.conf.IsPal {
-		apu.ch4.cycleTbl = &apuDpcmCyclesPal
-	}
+	apu.ch4 = &apuChanDpcm{apu: apu}
 
 	return apu
 }

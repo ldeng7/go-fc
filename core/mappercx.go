@@ -1,36 +1,23 @@
 package core
 
-// 0xc0
+// 193
 
-type mapperc0 struct {
+type mapper193 struct {
 	baseMapper
 }
 
-func newMapperc0(bm *baseMapper) Mapper {
-	return &mapperc0{baseMapper: *bm}
+func newMapper193(bm *baseMapper) Mapper {
+	return &mapper193{baseMapper: *bm}
 }
 
-func (m *mapperc0) reset() {
-}
-
-// 0xc1
-
-type mapperc1 struct {
-	baseMapper
-}
-
-func newMapperc1(bm *baseMapper) Mapper {
-	return &mapperc1{baseMapper: *bm}
-}
-
-func (m *mapperc1) reset() {
+func (m *mapper193) reset() {
 	m.mem.setProm32kBank((m.mem.nProm8kPage >> 2) - 1)
 	if m.mem.nVrom1kPage != 0 {
 		m.mem.setVrom8kBank(0)
 	}
 }
 
-func (m *mapperc1) write(addr uint16, data byte) {
+func (m *mapper193) write(addr uint16, data byte) {
 	switch addr {
 	case 0x6000:
 		m.mem.setVrom2kBank(0, uint32((data>>1)&0x7e))
@@ -44,100 +31,204 @@ func (m *mapperc1) write(addr uint16, data byte) {
 	}
 }
 
-// 0xc2
+// 194
 
-type mapperc2 struct {
+type mapper194 struct {
 	baseMapper
 }
 
-func newMapperc2(bm *baseMapper) Mapper {
-	return &mapperc2{baseMapper: *bm}
+func newMapper194(bm *baseMapper) Mapper {
+	return &mapper194{baseMapper: *bm}
 }
 
-func (m *mapperc2) reset() {
+func (m *mapper194) reset() {
 	m.mem.setProm32kBank(m.mem.nProm8kPage>>2 - 1)
 }
 
-func (m *mapperc2) write(addr uint16, data byte) {
+func (m *mapper194) write(addr uint16, data byte) {
 	m.mem.setProm8kBank(3, uint32(data))
 }
 
-// 0xc3
+// 199
 
-type mapperc3 struct {
+type mapper199 struct {
+	baseMapper
+	irqEn    bool
+	irqReq   bool
+	irqCnt   byte
+	irqLatch byte
+	we       byte
+	jm       bool
+	jmData   [3]byte
+	r        [8]byte
+	p        [4]byte
+	c        [8]byte
+}
+
+func newMapper199(bm *baseMapper) Mapper {
+	bm.sys.tvFormat = tvFormats[1]
+	return &mapper199{baseMapper: *bm}
+}
+
+func (m *mapper199) setCpuBanks() {
+	for i := byte(0); i < 4; i++ {
+		j := i ^ ((m.r[0] >> 5) & (^(i << 1)) & 0x02)
+		m.mem.setProm8kBank(i+4, uint32(m.p[j]))
+	}
+}
+
+func (m *mapper199) setPpuBanks() {
+	b := (m.r[0] & 0x80) >> 5
+	for i, c := range m.c {
+		if c <= 0x07 {
+			m.mem.setCram1kBank(byte(i)^b, uint32(c))
+		} else {
+			m.mem.setVrom1kBank(byte(i)^b, uint32(c))
+		}
+	}
+}
+
+func (m *mapper199) reset() {
+	m.irqEn, m.irqReq, m.irqCnt, m.irqLatch = false, false, 0, 0
+	m.we = 0
+	m.jm = false
+	m.jmData[0], m.jmData[1], m.jmData[2] = 0, 0, 0
+	m.p[0], m.p[1], m.p[2], m.p[3] = 0, 1, byte(m.mem.nProm8kPage)-2, byte(m.mem.nProm8kPage)-1
+	for i := byte(0); i < 8; i++ {
+		m.r[i], m.c[i] = 0, i
+	}
+	m.setCpuBanks()
+	m.setPpuBanks()
+}
+
+func (m *mapper199) readLow(addr uint16) byte {
+	if addr >= 0x5000 && addr < 0x6000 {
+		return m.mem.xram[addr&0x1fff]
+	} else if addr >= 0x6000 {
+		if m.jm {
+			switch addr {
+			case 0x6000:
+				return m.jmData[0]
+			case 0x6010:
+				return m.jmData[1]
+			case 0x6013:
+				m.jm = false
+				return m.jmData[2]
+			}
+		}
+		switch m.we {
+		case 0xe4, 0xe5, 0xe6, 0xe7, 0xec, 0xed, 0xee, 0xef:
+			return m.mem.wram[(uint16(m.we&0x03)<<13)|(addr&0x1fff)]
+		default:
+			return m.cpuBanks[addr>>13][addr&0x1fff]
+		}
+	}
+	return m.baseMapper.readLow(addr)
+}
+
+func (m *mapper199) writeLow(addr uint16, data byte) {
+	if addr >= 0x5000 && addr < 0x6000 {
+		m.mem.xram[addr&0x1fff] = data
+		switch m.we {
+		case 0xa1, 0xa5, 0xa9:
+			m.jm = true
+			switch addr {
+			case 0x5000:
+				m.jmData[0] = data
+			case 0x5010:
+				m.jmData[1] = data
+			case 0x5013:
+				m.jmData[2] = data
+			}
+		}
+	} else if addr >= 0x6000 {
+		switch m.we {
+		case 0xe4, 0xec:
+			m.mem.wram[addr&0x1fff] = data
+			m.cpuBanks[addr>>13][addr&0x1fff] = data
+		case 0xe5, 0xe6, 0xe7, 0xed, 0xee, 0xef:
+			m.mem.wram[(uint16(m.we&0x03)<<13)|(addr&0x1fff)] = data
+		default:
+			m.cpuBanks[addr>>13][addr&0x1fff] = data
+		}
+	} else {
+		m.baseMapper.writeLow(addr, data)
+	}
+}
+
+func (m *mapper199) write(addr uint16, data byte) {
+	switch addr & 0xe001 {
+	case 0x8000:
+		m.r[0] = data
+		m.setCpuBanks()
+		m.setPpuBanks()
+	case 0x8001:
+		m.r[1] = data
+		r := m.r[0] & 0x0f
+		switch r {
+		case 0x00, 0x01:
+			m.c[r<<1] = data
+			m.setPpuBanks()
+		case 0x02, 0x03, 0x04, 0x05:
+			m.c[r+0x02] = data
+			m.setPpuBanks()
+		case 0x06, 0x07, 0x08, 0x09:
+			m.p[r-0x06] = data
+			m.setCpuBanks()
+		case 0x0a, 0x0b:
+			m.c[((r&0x01)<<1)+0x01] = data
+			m.setPpuBanks()
+		}
+	case 0xa000:
+		m.r[2] = data
+		switch data & 0x03 {
+		case 0x00:
+			m.mem.setVramMirror(memVramMirrorV)
+		case 0x01:
+			m.mem.setVramMirror(memVramMirrorH)
+		case 0x02:
+			m.mem.setVramMirror(memVramMirror4L)
+		case 0x03:
+			m.mem.setVramMirror(memVramMirror4H)
+		}
+	case 0xa001:
+		m.r[3], m.we = data, data
+	case 0xc000:
+		m.r[4], m.irqCnt, m.irqReq = data, data, false
+	case 0xc001:
+		m.r[5], m.irqLatch, m.irqReq = data, data, false
+	case 0xe000:
+		m.r[6], m.irqEn, m.irqReq = data, false, false
+		m.clearIntr()
+	case 0xe001:
+		m.r[7], m.irqEn, m.irqReq = data, true, false
+	}
+}
+
+func (m *mapper199) hSync(scanline uint16) {
+	if scanline < ScreenHeight && m.isPpuDisp() && m.irqEn && !m.irqReq {
+		if scanline == 0 && m.irqCnt != 0 {
+			m.irqCnt--
+		}
+		if m.irqCnt == 0 {
+			m.irqReq, m.irqCnt = true, m.irqLatch
+			m.setIntr()
+		}
+		m.irqCnt--
+	}
+}
+
+// 200
+
+type mapper200 struct {
 	baseMapper
 }
 
-func newMapperc3(bm *baseMapper) Mapper {
-	return &mapperc3{baseMapper: *bm}
+func newMapper200(bm *baseMapper) Mapper {
+	return &mapper200{baseMapper: *bm}
 }
 
-func (m *mapperc3) reset() {
-}
-
-// 0xc4
-
-type mapperc4 struct {
-	baseMapper
-}
-
-func newMapperc4(bm *baseMapper) Mapper {
-	return &mapperc4{baseMapper: *bm}
-}
-
-func (m *mapperc4) reset() {
-}
-
-// 0xc5
-
-type mapperc5 struct {
-	baseMapper
-}
-
-func newMapperc5(bm *baseMapper) Mapper {
-	return &mapperc5{baseMapper: *bm}
-}
-
-func (m *mapperc5) reset() {
-}
-
-// 0xc6
-
-type mapperc6 struct {
-	baseMapper
-}
-
-func newMapperc6(bm *baseMapper) Mapper {
-	return &mapperc6{baseMapper: *bm}
-}
-
-func (m *mapperc6) reset() {
-}
-
-// 0xc7
-
-type mapperc7 struct {
-	baseMapper
-}
-
-func newMapperc7(bm *baseMapper) Mapper {
-	return &mapperc7{baseMapper: *bm}
-}
-
-func (m *mapperc7) reset() {
-}
-
-// 0xc8
-
-type mapperc8 struct {
-	baseMapper
-}
-
-func newMapperc8(bm *baseMapper) Mapper {
-	return &mapperc8{baseMapper: *bm}
-}
-
-func (m *mapperc8) reset() {
+func (m *mapper200) reset() {
 	m.mem.setProm16kBank(4, 0)
 	m.mem.setProm16kBank(6, 0)
 	if m.mem.nVrom1kPage != 0 {
@@ -145,7 +236,7 @@ func (m *mapperc8) reset() {
 	}
 }
 
-func (m *mapperc8) write(addr uint16, data byte) {
+func (m *mapper200) write(addr uint16, data byte) {
 	b := uint32(addr) & 0x07
 	m.mem.setProm16kBank(4, b)
 	m.mem.setProm16kBank(6, b)
@@ -158,17 +249,17 @@ func (m *mapperc8) write(addr uint16, data byte) {
 	}
 }
 
-// 0xc9
+// 201
 
-type mapperc9 struct {
+type mapper201 struct {
 	baseMapper
 }
 
-func newMapperc9(bm *baseMapper) Mapper {
-	return &mapperc9{baseMapper: *bm}
+func newMapper201(bm *baseMapper) Mapper {
+	return &mapper201{baseMapper: *bm}
 }
 
-func (m *mapperc9) reset() {
+func (m *mapper201) reset() {
 	m.mem.setProm16kBank(4, 0)
 	m.mem.setProm16kBank(6, 0)
 	if m.mem.nVrom1kPage != 0 {
@@ -176,7 +267,7 @@ func (m *mapperc9) reset() {
 	}
 }
 
-func (m *mapperc9) write(addr uint16, data byte) {
+func (m *mapper201) write(addr uint16, data byte) {
 	var b uint32
 	if addr&0x08 != 0 {
 		b = uint32(addr) & 0x03
@@ -185,17 +276,17 @@ func (m *mapperc9) write(addr uint16, data byte) {
 	m.mem.setVrom8kBank(b)
 }
 
-// 0xca
+// 202
 
-type mapperca struct {
+type mapper202 struct {
 	baseMapper
 }
 
-func newMapperca(bm *baseMapper) Mapper {
-	return &mapperca{baseMapper: *bm}
+func newMapper202(bm *baseMapper) Mapper {
+	return &mapper202{baseMapper: *bm}
 }
 
-func (m *mapperca) reset() {
+func (m *mapper202) reset() {
 	m.mem.setProm16kBank(4, 6)
 	m.mem.setProm16kBank(6, 7)
 	if m.mem.nVrom1kPage != 0 {
@@ -203,17 +294,17 @@ func (m *mapperca) reset() {
 	}
 }
 
-func (m *mapperca) writeEx(addr uint16, data byte) {
+func (m *mapper202) writeEx(addr uint16, data byte) {
 	if addr >= 0x4020 {
 		m.write(addr, data)
 	}
 }
 
-func (m *mapperca) writeLow(addr uint16, data byte) {
+func (m *mapper202) writeLow(addr uint16, data byte) {
 	m.write(addr, data)
 }
 
-func (m *mapperca) write(addr uint16, data byte) {
+func (m *mapper202) write(addr uint16, data byte) {
 	b := uint32(addr>>1) & 0x07
 	m.mem.setProm16kBank(4, b)
 	if addr&0x000c == 0x000c {

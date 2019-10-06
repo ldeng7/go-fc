@@ -48,7 +48,7 @@ func (ctx *Ctx) start(romFileArr js.Value, romFileLen int) interface{} {
 		ticker := time.NewTicker(time.Duration(sys.GetFramePeriod()*1000.0) * time.Microsecond)
 		fb := &core.FrameBuffer{}
 		sys.SetFrameBuffer(fb)
-		ctx.setFrameBuffer.Invoke(uintptr(unsafe.Pointer(fb)))
+		ctx.setFrameBuffer.Invoke(uintptr(unsafe.Pointer(fb)), len(*fb)*4)
 		for _ = range ticker.C {
 			sys.RunFrame()
 			ctx.updateScreen.Invoke()

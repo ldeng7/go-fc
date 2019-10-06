@@ -13,10 +13,7 @@ var apuDutyLut = [4]byte{
 var apuNoiseFreq = [16]int32{
 	4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
 }
-var apuDpcmCyclesPal = [16]uint16{
-	397, 353, 315, 297, 265, 235, 209, 198, 176, 148, 131, 118, 98, 78, 66, 50,
-}
-var apuDpcmCyclesNtsc = [16]uint16{
+var apuDpcmCycles = [16]uint16{
 	428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 85, 72, 54,
 }
 
@@ -437,8 +434,7 @@ func (ch *apuChanNoise) render() int32 {
 }
 
 type apuChanDpcm struct {
-	apu      *Apu
-	cycleTbl *[16]uint16
+	apu *Apu
 
 	en        bool
 	looping   bool
@@ -471,7 +467,7 @@ func (ch *apuChanDpcm) writeAsync(addr uint16, data byte) {
 	ch.reg[i] = data
 	switch i {
 	case 0x00:
-		ch.freq = int32((*ch.cycleTbl)[data&0x0f]) << 16
+		ch.freq = int32(apuDpcmCycles[data&0x0f]) << 16
 		ch.looping = data&0x40 != 0
 	case 0x01:
 		ch.dpcmValue = (data & 0x7f) >> 1
@@ -487,7 +483,7 @@ func (ch *apuChanDpcm) write(addr uint16, data byte) {
 	ch.reg[i] = data
 	switch i {
 	case 0x00:
-		ch.syncNCycleCache = (*ch.cycleTbl)[data&0x0f] << 3
+		ch.syncNCycleCache = apuDpcmCycles[data&0x0f] << 3
 		ch.syncLooping, ch.syncIrqGen = data&0x40 != 0, data&0x80 != 0
 		if !ch.syncIrqGen {
 			ch.syncIrqEn = false

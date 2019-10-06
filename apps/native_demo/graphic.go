@@ -53,7 +53,6 @@ func newGraphic(title string) (*Graphic, error) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 	gl.BindTexture(gl.TEXTURE_2D, 0)
-	//gl.ClearColor(0, 0, 0, 1)
 
 	g.fb = &core.FrameBuffer{}
 	g.fbp = unsafe.Pointer(g.fb)

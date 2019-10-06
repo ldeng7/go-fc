@@ -13,17 +13,21 @@ import (
 type conf struct {
 	romPath  string
 	patchTyp uint64
-	isPal    bool
+	tvFormat uint
 }
 
 func parseArgs() *conf {
 	c := &conf{}
 	flag.StringVar(&c.romPath, "rom", "", "rom path")
 	flag.Uint64Var(&c.patchTyp, "patch", 0, "patch type")
-	flag.BoolVar(&c.isPal, "pal", false, "run in PAL mode instead of NTSC")
+	flag.UintVar(&c.tvFormat, "tv", 0, "tv format: 0=ntsc, 1=pal, 2=pal-china")
 	flag.Parse()
 	if len(c.romPath) == 0 {
 		flag.PrintDefaults()
+		return nil
+	}
+	if c.tvFormat > 2 {
+		println("invalid tv format")
 		return nil
 	}
 	return c
@@ -61,7 +65,7 @@ func newApp(c *conf) (*App, error) {
 	defer f.Close()
 	ac := &core.Conf{
 		PatchTyp:      c.patchTyp,
-		IsPal:         c.isPal,
+		TvFormat:      byte(c.tvFormat),
 		AllSprite:     true,
 		AudioSampRate: a.audio.sampRate,
 	}

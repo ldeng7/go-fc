@@ -45,6 +45,7 @@ func newRom(file io.Reader) (*Rom, error) {
 	rom.bTrainer = header.Control1&0x04 != 0
 	rom.b4Screen = header.Control1&0x08 != 0
 	rom.mapperNo = (header.Control1 >> 4) | (header.Control2 & 0xf0)
+	println("mapper: ", rom.mapperNo) //ldeng7
 
 	if rom.bTrainer {
 		rom.trn = make([]byte, 512)

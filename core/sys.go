@@ -12,8 +12,8 @@ const (
 
 type Conf struct {
 	PatchTyp      uint64
-	IsPal         bool
 	AllSprite     bool
+	TvFormat      byte
 	RenderMode    byte
 	AudioSampRate uint16
 }
@@ -28,8 +28,11 @@ type tvFormat struct {
 	framePeriod       float32
 }
 
-var tvFormatPal = tvFormat{1662607.125, 312, 1278, 960, 318, 2, 1000.0 / 50.0}
-var tvFormatNtsc = tvFormat{1789772.5, 262, 1364, 1024, 340, 4, 1000.0 / 60.0}
+var tvFormats = [3]tvFormat{
+	{1789772.5, 262, 1364, 1024, 340, 4, 1000.0 / 60.0}, // ntsc
+	{1773447.0, 312, 1362, 1024, 338, 4, 1000.0 / 50.0}, // pal
+	{1773447.0, 313, 1362, 1024, 338, 2, 1000.0 / 50.0}, // pal china
+}
 
 type Sys struct {
 	rom    *Rom
@@ -47,20 +50,16 @@ type Sys struct {
 	scanline  uint16
 	nCycle    int64
 	nCycleReq int64
+	//logger    *os.File //ldeng7
 }
 
 func NewSys(file io.Reader, conf *Conf) (*Sys, error) {
 	var err error
 	sys := &Sys{}
 
-	sys.renderMode = conf.RenderMode
-	if conf.IsPal {
-		sys.tvFormat = tvFormatPal
-	} else {
-		sys.tvFormat = tvFormatNtsc
-	}
 	sys.conf = *conf
-
+	sys.renderMode = conf.RenderMode
+	sys.tvFormat = tvFormats[conf.TvFormat]
 	if sys.rom, err = newRom(file); err != nil {
 		return nil, err
 	}
@@ -74,6 +73,7 @@ func NewSys(file io.Reader, conf *Conf) (*Sys, error) {
 	sys.pad = newPad()
 
 	sys.reset(true)
+	//sys.logger, _ = os.OpenFile("loggo.txt", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	return sys, nil
 }
 
@@ -121,7 +121,7 @@ func (sys *Sys) read(addr uint16) byte {
 			0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x15:
 			return sys.apu.read(addr)
 		case 0x14:
-			return byte(addr)
+			return 0x14
 		case 0x16:
 			return sys.pad.read(addr) | 0x40
 		case 0x17:
@@ -132,7 +132,7 @@ func (sys *Sys) read(addr uint16) byte {
 	case 0x03:
 		return sys.mapper.readLow(addr)
 	default:
-		return sys.mem.cpuBanks[addr>>13][addr&0x1fff]
+		return sys.mapper.read(addr)
 	}
 }
 
@@ -218,7 +218,7 @@ func (sys *Sys) RunFrame() {
 	}
 
 	for sys.scanline = 1; sys.scanline < 240; sys.scanline++ {
-		ppu.iScanline = ScreenWidth * sys.scanline
+		ppu.iScanline += ScreenWidth
 		switch sys.renderMode {
 		case RenderModePostAll:
 			sys.runCpu(sys.tvFormat.nScanlineCycle)

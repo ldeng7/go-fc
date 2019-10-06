@@ -11,16 +11,17 @@
   </style>
   <script src="wasm_exec.js"></script>
   <script>
-let goMemArr, fbOffset, canvasCtx, canvasData
+let goMemArr, fbOffset, fbSize, canvasCtx, canvasData
 
 window.copyFromJsArr = (arr, ptr) => {
   goMemArr.set(arr, ptr)
 }
-window.setFrameBuffer = (ptr) => {
+window.setFrameBuffer = (ptr, sz) => {
   fbOffset = ptr
+  fbSize = sz
 }
 window.updateScreen = () => {
-  canvasData.data.set(goMemArr.slice(fbOffset, fbOffset + 261120))
+  canvasData.data.set(goMemArr.slice(fbOffset, fbOffset + fbSize))
   canvasCtx.putImageData(canvasData, 0, 0)
 }
 window.goFuncs = {}

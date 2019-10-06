@@ -4,54 +4,74 @@ import "fmt"
 
 type Mapper interface {
 	reset()
-	read(addr uint16, data byte)
-	write(addr uint16, data byte)
-	readLow(addr uint16) byte
-	writeLow(addr uint16, data byte)
 	readEx(addr uint16) byte
 	writeEx(addr uint16, data byte)
+	readLow(addr uint16) byte
+	writeLow(addr uint16, data byte)
+	read(addr uint16) byte
+	write(addr uint16, data byte)
+
 	hSync(scanline uint16)
 	vSync()
 	clock(nCycle int64)
 	ppuLatch(addr uint16)
 	ppuChrLatch(addr uint16)
-	ppuExtLatchX(x uint8)
-	ppuExtLatch(addr uint16, chL *byte, chH *byte, attr *byte)
+	ppuExtLatchX(x byte)
+	ppuExtLatchSpOfs() byte
+	ppuExtLatch(iNameTbl uint16, chL *byte, chH *byte, attr *byte)
 }
 
+func newMapperNil(bm *baseMapper) Mapper { return nil }
+
 var mapperTable = [256]func(bm *baseMapper) Mapper{
-	newMapper00, newMapper01, newMapper02, newMapper03, newMapper04, newMapper05, newMapper06, newMapper07,
-	newMapper08, newMapper09, newMapper0a, newMapper0b, newMapper0c, newMapper0d, nil, newMapper0f,
-	newMapper10, newMapper11, newMapper12, newMapper13, nil, newMapper15, newMapper16, newMapper17,
-	newMapper18, newMapper19, newMapper1a, newMapper1b, nil, nil, nil, nil,
-	newMapper20, newMapper21, newMapper22, nil, nil, nil, nil, nil,
-	newMapper28, newMapper29, newMapper2a, newMapper2b, newMapper2c, newMapper2d, newMapper2e, newMapper2f,
-	newMapper30, newMapper31, newMapper32, newMapper33, newMapper34, newMapper35, newMapper36, newMapper37,
-	newMapper38, newMapper39, newMapper3a, newMapper3b, newMapper3c, newMapper3d, newMapper3e, newMapper3f,
-	newMapper40, newMapper41, newMapper42, newMapper43, newMapper44, newMapper45, newMapper46, newMapper47,
-	newMapper48, newMapper49, newMapper4a, newMapper4b, newMapper4c, newMapper4d, newMapper4e, newMapper4f,
-	newMapper50, newMapper51, newMapper52, newMapper53, newMapper54, newMapper55, newMapper56, newMapper57,
-	newMapper58, newMapper59, newMapper5a, newMapper5b, newMapper5c, newMapper5d, newMapper5e, newMapper5f,
-	newMapper60, newMapper61, newMapper62, newMapper63, newMapper64, newMapper65, newMapper66, newMapper67,
-	newMapper68, newMapper69, newMapper6a, newMapper6b, newMapper6c, newMapper6d, newMapper6e, newMapper6f,
-	newMapper70, newMapper71, newMapper72, newMapper73, newMapper74, newMapper75, newMapper76, newMapper77,
-	newMapper78, newMapper79, newMapper7a, nil, nil, nil, nil, nil,
-	nil, nil, nil, nil, nil, newMapper85, newMapper86, newMapper87,
-	nil, nil, nil, nil, newMapper8c, newMapper8d, newMapper8e, nil,
-	nil, nil, nil, nil, nil, nil, nil, newMapper97,
-	nil, nil, nil, nil, nil, nil, nil, nil,
-	newMappera0, newMappera1, newMappera2, newMappera3, newMappera4, newMappera5, newMappera6, newMappera7,
-	nil, nil, nil, nil, nil, nil, nil, nil,
-	nil, nil, nil, nil, newMapperb4, newMapperb5, newMapperb6, newMapperb7,
-	newMapperb8, newMapperb9, newMapperba, newMapperbb, newMapperbc, newMapperbd, newMapperbe, newMapperbf,
-	newMapperc0, newMapperc1, newMapperc2, newMapperc3, newMapperc4, newMapperc5, newMapperc6, newMapperc7,
-	newMapperc8, newMapperc9, newMapperca, nil, nil, nil, nil, nil,
-	nil, nil, nil, nil, nil, nil, nil, nil,
-	nil, nil, nil, nil, nil, nil, newMapperde, newMapperdf,
-	newMappere0, newMappere1, newMappere2, newMappere3, newMappere4, newMappere5, newMappere6, newMappere7,
-	newMappere8, newMappere9, newMapperea, newMappereb, newMapperec, newMappered, newMapperee, newMapperef,
+	// 0x
+	newMapper000, newMapper001, newMapper002, newMapper003, newMapper004, newMapper005, newMapper006, newMapper007,
+	newMapper008, newMapper009, newMapper010, newMapper011, newMapperNil, newMapper013, newMapperNil, newMapperNil,
+	// 1x
+	newMapper016, newMapperNil, newMapper018, newMapper019, newMapperNil, newMapperNil, newMapper022, newMapper023,
+	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
+	// 2x
+	newMapperNil, newMapper033, newMapper034, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
+	newMapper040, newMapper041, newMapperNil, newMapper043, newMapper044, newMapper045, newMapper046, newMapper047,
+	// 3x
+	newMapperNil, newMapper049, newMapperNil, newMapperNil, newMapper052, newMapperNil, newMapperNil, newMapperNil,
+	newMapperNil, newMapper057, newMapper058, newMapperNil, newMapper060, newMapper061, newMapper062, newMapperNil,
+	// 4x
+	newMapperNil, newMapperNil, newMapper066, newMapperNil, newMapperNil, newMapperNil, newMapper070, newMapper071,
+	newMapper072, newMapper073, newMapperNil, newMapperNil, newMapper076, newMapper077, newMapper078, newMapper079,
+	// 5x
+	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper086, newMapper087,
+	newMapper088, newMapper089, newMapperNil, newMapperNil, newMapper092, newMapper093, newMapper094, newMapperNil,
+	// 6x
+	newMapper096, newMapper097, newMapperNil, newMapper099, newMapperNil, newMapper101, newMapperNil, newMapperNil,
+	newMapperNil, newMapperNil, newMapperNil, newMapper107, newMapper108, newMapperNil, newMapperNil, newMapper111,
+	// 7x
+	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
+	newMapper120, newMapper121, newMapper122, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
+	// 8x
+	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper132, newMapper133, newMapperNil, newMapperNil,
+	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper140, newMapper141, newMapperNil, newMapperNil,
+	// 9x
+	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper148, newMapperNil, newMapper150, newMapper151,
+	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
+	// ax
+	newMapperNil, newMapperNil, newMapper162, newMapper163, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
+	newMapper168, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper174, newMapper175,
+	// bx
+	newMapper176, nil, newMapper178, nil, newMapperb4, newMapperb5, newMapperb6, newMapperb7,
+	nil, newMapperb9, newMapperba, newMapperbb, newMapperbc, newMapperbd, newMapperbe, newMapperbf,
+	// cx
+	newMapperNil, newMapper193, newMapper194, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper199,
+	newMapper200, newMapper201, newMapper202, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
+	// dx
+	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper212, newMapperNil, newMapperNil, newMapperNil,
+	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper222, newMapperNil,
+	// ex
+	newMapperNil, newMapper225, newMapper226, newMapper227, newMapper228, newMapper229, newMapper230, newMapper231,
+	newMapper232, newMapper233, newMapper234, newMapper235, newMapper236, newMapper237, newMapperNil, newMapperNil,
+	// fx
 	newMapperf0, newMapperf1, newMapperf2, newMapperf3, newMapperf4, newMapperf5, newMapperf6, newMapperf7,
-	newMapperf8, newMapperf9, newMapperfa, newMapperfb, newMapperfc, newMapperfd, newMapperfe, newMapperff,
+	newMapperf8, newMapperf9, nil, newMapperfb, newMapperfc, newMapper253, newMapperfe, newMapperff,
 }
 
 type baseMapper struct {
@@ -66,37 +86,51 @@ func newMapper(sys *Sys) (Mapper, error) {
 	bm.mem = sys.mem
 	bm.cpuBanks = sys.mem.cpuBanks[:]
 
-	f := mapperTable[sys.rom.mapperNo]
-	if nil == f {
+	m := mapperTable[sys.rom.mapperNo](bm)
+	if nil == m {
 		return nil, fmt.Errorf("unsupported mapper #%d", sys.rom.mapperNo)
 	}
-	m := f(bm)
 	return m, nil
 }
 
 func (m *baseMapper) reset()                         {}
-func (m *baseMapper) read(addr uint16, data byte)    {}
-func (m *baseMapper) write(addr uint16, data byte)   {}
 func (m *baseMapper) readEx(addr uint16) byte        { return 0 }
 func (m *baseMapper) writeEx(addr uint16, data byte) {}
-func (m *baseMapper) hSync(scanline uint16)          {}
-func (m *baseMapper) vSync()                         {}
-func (m *baseMapper) clock(nCycle int64)             {}
-func (m *baseMapper) ppuLatch(addr uint16)           {}
-func (m *baseMapper) ppuChrLatch(addr uint16)        {}
-func (m *baseMapper) ppuExtLatchX(x uint8)           {}
-
 func (m *baseMapper) readLow(addr uint16) byte {
-	if addr >= 0x6000 && addr <= 0x7fff {
+	if addr >= 0x6000 {
 		return m.cpuBanks[addr>>13][addr&0x1fff]
 	}
-	return byte(addr)
+	return byte(addr >> 8)
 }
-
 func (m *baseMapper) writeLow(addr uint16, data byte) {
-	if addr >= 0x6000 && addr <= 0x7fff {
+	if addr >= 0x6000 {
 		m.cpuBanks[addr>>13][addr&0x1fff] = data
 	}
 }
+func (m *baseMapper) read(addr uint16) byte {
+	return m.cpuBanks[addr>>13][addr&0x1fff]
+}
+func (m *baseMapper) write(addr uint16, data byte) {}
 
-func (m *baseMapper) ppuExtLatch(addr uint16, chL *byte, chH *byte, attr *byte) {}
+func (m *baseMapper) hSync(scanline uint16)   {}
+func (m *baseMapper) vSync()                  {}
+func (m *baseMapper) clock(nCycle int64)      {}
+func (m *baseMapper) ppuLatch(addr uint16)    {}
+func (m *baseMapper) ppuChrLatch(addr uint16) {}
+func (m *baseMapper) ppuExtLatchX(x byte)     {}
+func (m *baseMapper) ppuExtLatchSpOfs() byte  { return 0 }
+func (m *baseMapper) ppuExtLatch(
+	iNameTbl uint16, chL *byte, chH *byte, attr *byte) {
+}
+
+func (m *baseMapper) setIntr() {
+	m.sys.cpu.intr |= cpuIntrTypMapper
+}
+
+func (m *baseMapper) clearIntr() {
+	m.sys.cpu.intr &^= cpuIntrTypMapper
+}
+
+func (m *baseMapper) isPpuDisp() bool {
+	return m.sys.ppu.reg1&(ppuReg1BgDisp|ppuReg1SpDisp) != 0
+}

@@ -166,17 +166,16 @@ func (m *mapperf6) reset() {
 	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
 }
 
-func (m *mapperf6) write(addr uint16, data byte) {
-	if addr < 0x6000 || addr >= 0x8000 {
-		return
-	}
-	switch addr {
-	case 0x6000, 0x6001, 0x6002, 0x6003:
-		m.mem.setProm8kBank(byte(addr)+4, uint32(data))
-	case 0x6004, 0x6005, 0x6006, 0x6007:
-		m.mem.setVrom2kBank((byte(addr)-4)<<1, uint32(data))
-	default:
-		m.mem.cpuBanks[addr>>13][addr&0x1fff] = data
+func (m *mapperf6) writeLow(addr uint16, data byte) {
+	if addr >= 0x6000 {
+		switch addr {
+		case 0x6000, 0x6001, 0x6002, 0x6003:
+			m.mem.setProm8kBank(byte(addr)+4, uint32(data))
+		case 0x6004, 0x6005, 0x6006, 0x6007:
+			m.mem.setVrom2kBank((byte(addr)-4)<<1, uint32(data))
+		default:
+			m.cpuBanks[addr>>13][addr&0x1fff] = data
+		}
 	}
 }
 
@@ -219,19 +218,6 @@ func newMapperf9(bm *baseMapper) Mapper {
 func (m *mapperf9) reset() {
 }
 
-// 0xfa
-
-type mapperfa struct {
-	baseMapper
-}
-
-func newMapperfa(bm *baseMapper) Mapper {
-	return &mapperfa{baseMapper: *bm}
-}
-
-func (m *mapperfa) reset() {
-}
-
 // 0xfb
 
 type mapperfb struct {
@@ -258,17 +244,109 @@ func newMapperfc(bm *baseMapper) Mapper {
 func (m *mapperfc) reset() {
 }
 
-// 0xfd
+// 253
 
-type mapperfd struct {
+type mapper253 struct {
 	baseMapper
+	patch    bool
+	vrsw     bool
+	irqEn    byte
+	irqCnt   byte
+	irqLatch byte
+	irqClk   uint16
+	r        [8]byte
 }
 
-func newMapperfd(bm *baseMapper) Mapper {
-	return &mapperfd{baseMapper: *bm}
+func newMapper253(bm *baseMapper) Mapper {
+	return &mapper253{baseMapper: *bm}
 }
 
-func (m *mapperfd) reset() {
+func (m *mapper253) reset() {
+	if m.sys.conf.PatchTyp&0x01 != 0 {
+		m.patch = true
+	}
+	m.vrsw = false
+	m.irqEn, m.irqCnt, m.irqLatch, m.irqClk = 0, 0, 0, 0
+	for i := byte(0); i < 8; i++ {
+		m.r[i] = i
+	}
+	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	m.mem.setVrom8kBank(0)
+}
+
+func (m *mapper253) write(addr uint16, data byte) {
+	switch addr {
+	case 0x8010:
+		m.mem.setProm8kBank(4, uint32(data))
+	case 0xa010:
+		m.mem.setProm8kBank(5, uint32(data))
+	case 0x9400:
+		switch data & 0x03 {
+		case 0x00:
+			m.mem.setVramMirror(memVramMirrorV)
+		case 0x01:
+			m.mem.setVramMirror(memVramMirrorH)
+		case 0x02:
+			m.mem.setVramMirror(memVramMirror4L)
+		case 0x03:
+			m.mem.setVramMirror(memVramMirror4H)
+		}
+	}
+	a := addr & 0xf00c
+	switch a {
+	case 0xb000, 0xb008, 0xc000, 0xc008, 0xd000, 0xd008, 0xe000, 0xe008:
+		i := (byte(addr>>11) - 0x16) | (byte(addr&0x08) >> 3)
+		b := (m.r[i] & 0xf0) | (data & 0x0f)
+		m.r[i] = b
+		m.setPpuBanks(i, uint32(b))
+	case 0xb004, 0xb00c, 0xc004, 0xc00c, 0xd004, 0xd00c, 0xe004, 0xe00c:
+		i := (byte(addr>>11) - 0x16) | (byte(addr&0x08) >> 3)
+		b := (m.r[i] & 0x0f) | ((data & 0x0f) << 4)
+		m.r[i] = b
+		m.setPpuBanks(i, uint32(b)|(uint32(data>>4)<<8))
+	case 0xf000:
+		m.irqLatch = (m.irqLatch & 0xf0) | (data & 0x0f)
+	case 0xf004:
+		m.irqLatch = (m.irqLatch & 0x0f) | ((data & 0x0f) << 4)
+	case 0xf008:
+		m.irqEn = data & 0x03
+		if m.irqEn&0x02 != 0 {
+			m.irqCnt, m.irqClk = m.irqLatch, 0
+		}
+		m.clearIntr()
+	}
+}
+
+func (m *mapper253) setPpuBanks(iBank byte, iPage uint32) {
+	if m.patch && (iPage == 0x88 || iPage == 0xc8) {
+		m.vrsw = iPage&0x40 != 0
+		return
+	}
+	if iPage == 4 || iPage == 5 {
+		if m.patch && !m.vrsw {
+			m.mem.setVrom1kBank(iBank, iPage)
+		} else {
+			m.mem.setCram1kBank(iBank, iPage)
+		}
+	} else {
+		m.mem.setVrom1kBank(iBank, iPage)
+	}
+}
+
+func (m *mapper253) clock(nCycle int64) {
+	if m.irqEn&0x02 != 0 {
+		m.irqClk += uint16(nCycle)
+		if m.irqClk >= 114 {
+			m.irqClk -= 114
+			if m.irqCnt == 255 {
+				m.irqCnt = m.irqLatch
+				m.irqEn = (m.irqEn & 0x01) * 0x03
+				m.setIntr()
+			} else {
+				m.irqCnt++
+			}
+		}
+	}
 }
 
 // 0xfe

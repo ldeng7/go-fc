@@ -104,7 +104,7 @@ func (mem *Mem) setCpuBank(iBank byte, slice []byte, typ byte) {
 func (mem *Mem) setProm8kBank(iBank byte, iPage uint32) {
 	iPage %= mem.nProm8kPage
 	i := iPage << 13
-	mem.cpuBanks[iBank], mem.cpuBanksTyp[iBank] = mem.prom[i:i+0x2000], memBankTypRom
+	mem.cpuBanks[iBank], mem.cpuBanksTyp[iBank] = mem.prom[i:i+0x2000:i+0x2000], memBankTypRom
 }
 
 func (mem *Mem) setProm16kBank(iBank byte, iPage uint32) {
@@ -131,7 +131,7 @@ func (mem *Mem) setProm32kBank4(iPage0, iPage1, iPage2, iPage3 uint32) {
 func (mem *Mem) setVrom1kBank(iBank byte, iPage uint32) {
 	iPage %= mem.nVrom1kPage
 	i := iPage << 10
-	mem.ppuBanks[iBank], mem.ppuBanksTyp[iBank] = mem.vrom[i:i+0x0400], memBankTypVrom
+	mem.ppuBanks[iBank], mem.ppuBanksTyp[iBank] = mem.vrom[i:i+0x0400:i+0x0400], memBankTypVrom
 }
 
 func (mem *Mem) setVrom2kBank(iBank byte, iPage uint32) {
@@ -169,7 +169,7 @@ func (mem *Mem) setVrom8kBank8(iPage0, iPage1, iPage2, iPage3, iPage4, iPage5, i
 func (mem *Mem) setCram1kBank(iBank byte, iPage uint32) {
 	iPage &= 0x1f
 	i := iPage << 10
-	mem.ppuBanks[iBank], mem.ppuBanksTyp[iBank] = mem.cram[i:i+0x0400], memBankTypCram
+	mem.ppuBanks[iBank], mem.ppuBanksTyp[iBank] = mem.cram[i:i+0x0400:i+0x0400], memBankTypCram
 }
 
 func (mem *Mem) setCram2kBank(iBank byte, iPage uint32) {
@@ -193,10 +193,21 @@ func (mem *Mem) setCram8kBank(iPage uint32) {
 	}
 }
 
+func (mem *Mem) setCram8kBank8(iPage0, iPage1, iPage2, iPage3, iPage4, iPage5, iPage6, iPage7 uint32) {
+	mem.setCram1kBank(0, iPage0)
+	mem.setCram1kBank(1, iPage1)
+	mem.setCram1kBank(2, iPage2)
+	mem.setCram1kBank(3, iPage3)
+	mem.setCram1kBank(4, iPage4)
+	mem.setCram1kBank(5, iPage5)
+	mem.setCram1kBank(6, iPage6)
+	mem.setCram1kBank(7, iPage7)
+}
+
 func (mem *Mem) setVram1kBank(iBank byte, iPage uint32) {
 	iPage &= 3
 	i := iPage << 10
-	mem.ppuBanks[iBank], mem.ppuBanksTyp[iBank] = mem.vram[i:i+0x0400], memBankTypVram
+	mem.ppuBanks[iBank], mem.ppuBanksTyp[iBank] = mem.vram[i:i+0x0400:i+0x0400], memBankTypVram
 }
 
 func (mem *Mem) setVramBank(iPage0, iPage1, iPage2, iPage3 uint32) {

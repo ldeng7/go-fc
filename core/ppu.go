@@ -1,9 +1,10 @@
 package core
 
 const (
-	ScreenWidth    = 256 + 16
+	ScreenWidth    = 272
 	ScreenHeight   = 240
-	FrameBufferLen = ScreenWidth * ScreenWidth
+	FrameBufferLen = ScreenWidth * ScreenHeight
+	endTile        = (ScreenWidth >> 3) - 1
 )
 
 type FrameBuffer [FrameBufferLen]uint32
@@ -289,24 +290,14 @@ func (ppu *Ppu) renderBgPal(attr byte, chL byte, chH byte, sl []uint32) {
 }
 
 func (ppu *Ppu) scanlineRender(scanline uint8, bAllSp bool) {
-
-	sys, mem := ppu.sys, ppu.sys.mem
-	bgs := [34]byte{}
-
 	if scanline == 1 {
 		iPal := (ppu.reg1 >> 5) | ((ppu.reg1 & ppuReg1ColorMode) << 3)
 		ppu.palette = &ppuPalette[iPal]
 	}
 
-	if ppu.reg1&ppuReg1BgDisp == 0 {
-		p, c := ppu.screen, (*ppu.palette)[ppu.bgPal[0]]
-		for i, ie := ppu.iScanline, ppu.iScanline+ScreenWidth; i < ie; i++ {
-			(*p)[i] = c
-		}
-		if sys.renderMode == RenderModeTile {
-			sys.runCpu(1024)
-		}
-	} else {
+	sys, mem := ppu.sys, ppu.sys.mem
+	bgs := [endTile + 1]byte{}
+	if ppu.reg1&ppuReg1BgDisp != 0 {
 		sl := (*ppu.screen)[ppu.iScanline-ppu.loopySh:]
 		iNameTbl := (ppu.loopyV & 0x0fff) | 0x2000
 		bTileMode := sys.renderMode == RenderModeTile
@@ -317,7 +308,7 @@ func (ppu *Ppu) scanlineRender(scanline uint8, bAllSp bool) {
 			x := byte(iNameTbl) & 0x1f
 			attrSh := (byte(iNameTbl) & 0x40) >> 4
 			bank := mem.ppuBanks[iNameTbl>>10]
-			for i := byte(0); i < 33; i++ {
+			for i := byte(0); i < endTile; i++ {
 				tile := (uint16(ppu.reg0&ppuReg0BgTbl) << 8) +
 					(uint16(bank[iNameTbl&0x03ff]) << 4) + ppu.loopyY
 				if i != 0 && bTileMode {
@@ -351,7 +342,7 @@ func (ppu *Ppu) scanlineRender(scanline uint8, bAllSp bool) {
 		} else {
 			x := iNameTbl & 0x1f
 			var chH, chL, exattr byte
-			for i := byte(0); i < 33; i++ {
+			for i := byte(0); i < endTile; i++ {
 				if i != 0 && bTileMode {
 					sys.runCpu(32)
 				}
@@ -384,13 +375,21 @@ func (ppu *Ppu) scanlineRender(scanline uint8, bAllSp bool) {
 				(*p)[i] = c
 			}
 		}
+	} else {
+		p, c := ppu.screen, (*ppu.palette)[ppu.bgPal[0]]
+		for i, ie := ppu.iScanline, ppu.iScanline+ScreenWidth; i < ie; i++ {
+			(*p)[i] = c
+		}
+		if sys.renderMode == RenderModeTile {
+			sys.runCpu(1024)
+		}
 	}
 
 	ppu.reg2 &^= ppuReg2SpMax
 	if scanline > 239 || ppu.reg1&ppuReg1SpDisp == 0 {
 		return
 	}
-	sps, spram := [34]byte{}, ppu.spram[:]
+	sps, spram := [endTile + 1]byte{}, ppu.spram[:]
 	nSp, spM := 0, byte(7)
 	if ppu.reg0&ppuReg0Sp16 != 0 {
 		spM = 15
@@ -399,6 +398,10 @@ func (ppu *Ppu) scanlineRender(scanline uint8, bAllSp bool) {
 		sps[0] = 0xff
 	}
 
+	var spOfs byte
+	if ppu.bExtLatch {
+		spOfs = ppu.sys.mapper.ppuExtLatchSpOfs()
+	}
 	for i, j := 0, 0; i < 64; i, j = i+1, j+4 {
 		spY, spTile, spAttr, spX := spram[j], spram[j+1], spram[j+2], spram[j+3]
 		spDy := scanline - spY - 1
@@ -456,7 +459,7 @@ func (ppu *Ppu) scanlineRender(scanline uint8, bAllSp bool) {
 			spPat &^= maskBg
 		}
 
-		slPal := ppu.spPal[((spAttr & ppuSpAttrColor) << 2):]
+		slPal := ppu.spPal[((spAttr&ppuSpAttrColor)<<2)+spOfs:]
 		sl := (*ppu.screen)[ppu.iScanline+uint16(spX)+8:]
 		c1 := ((chL >> 1) & 0x55) | (chH & 0xaa)
 		c2 := (chL & 0x55) | ((chH << 1) & 0xaa)
@@ -478,5 +481,13 @@ func (ppu *Ppu) scanlineRender(scanline uint8, bAllSp bool) {
 				break
 			}
 		}
+	}
+
+	p := ppu.screen
+	for i, ie := ppu.iScanline, ppu.iScanline+8; i < ie; i++ {
+		(*p)[i] = 0xff000000
+	}
+	for i, ie := ppu.iScanline+ScreenWidth-8, ppu.iScanline+ScreenWidth; i < ie; i++ {
+		(*p)[i] = 0xff000000
 	}
 }

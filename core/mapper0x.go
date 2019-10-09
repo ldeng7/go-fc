@@ -1155,6 +1155,158 @@ func (m *mapper011) write(addr uint16, data byte) {
 	}
 }
 
+// 012
+
+type mapper012 struct {
+	baseMapper
+	irqEn        bool
+	irqCnt       byte
+	irqLatch     byte
+	irqPreset    bool
+	irqPresetVbl bool
+	vb           [2]uint32
+	p            [2]byte
+	r, c         [8]byte
+}
+
+func newMapper012(bm *baseMapper) Mapper {
+	return &mapper012{baseMapper: *bm}
+}
+
+func (m *mapper012) setCpuBanks() {
+	if m.r[0]&0x40 != 0 {
+		m.mem.setProm32kBank4(m.mem.nProm8kPage-2, uint32(m.p[1]), uint32(m.p[0]), m.mem.nProm8kPage-1)
+	} else {
+		m.mem.setProm32kBank4(uint32(m.p[0]), uint32(m.p[1]), m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	}
+}
+
+func (m *mapper012) setPpuBanks() {
+	if m.mem.nVrom1kPage != 0 {
+		if m.r[0]&0x80 != 0 {
+			for i := byte(0); i < 4; i++ {
+				m.mem.setVrom1kBank(i, m.vb[0]+uint32(m.c[i+4]))
+			}
+			for i := byte(0); i < 4; i++ {
+				m.mem.setVrom1kBank(i+4, m.vb[1]+uint32(m.c[i]))
+			}
+		} else {
+			for i := byte(0); i < 8; i++ {
+				m.mem.setVrom1kBank(i, m.vb[i&0x04]+uint32(m.c[i]))
+			}
+		}
+	} else {
+		if m.r[0]&0x80 != 0 {
+			for i := byte(0); i < 4; i++ {
+				m.mem.setCram1kBank(i, uint32(m.c[i+4]&0x07))
+			}
+			for i := byte(0); i < 4; i++ {
+				m.mem.setCram1kBank(i+4, uint32(m.c[i]&0x07))
+			}
+		} else {
+			for i := byte(0); i < 8; i++ {
+				m.mem.setCram1kBank(i, uint32(m.c[i]&0x07))
+			}
+		}
+	}
+}
+
+func (m *mapper012) reset() {
+	m.irqEn, m.irqCnt, m.irqLatch = false, 0, 0xff
+	m.irqPreset, m.irqPresetVbl = false, false
+	m.vb[0], m.vb[1] = 0, 0
+	m.p[0], m.p[1] = 0, 0
+	for i := byte(0); i < 8; i++ {
+		m.r[i], m.c[i] = 0, i
+	}
+	m.setCpuBanks()
+	m.setPpuBanks()
+}
+
+func (m *mapper012) writeLow(addr uint16, data byte) {
+	if addr > 0x4100 && addr < 0x6000 {
+		m.vb[0], m.vb[1] = uint32(data&0x01)<<8, uint32(data&0x10)<<4
+		m.setPpuBanks()
+	} else {
+		m.baseMapper.writeLow(addr, data)
+	}
+}
+
+func (m *mapper012) readLow(addr uint16) byte {
+	return 0x01
+}
+
+func (m *mapper012) write(addr uint16, data byte) {
+	switch addr & 0xe001 {
+	case 0x8000:
+		m.r[0] = data
+		m.setCpuBanks()
+		m.setPpuBanks()
+	case 0x8001:
+		m.r[1] = data
+		r := m.r[0] & 0x07
+		switch r {
+		case 0x00, 0x01:
+			m.c[r<<1], m.c[(r<<1)+1] = data&0xfe, (data&0xfe)+1
+			m.setPpuBanks()
+		case 0x02, 0x03, 0x04, 0x05:
+			m.c[r+2] = data
+			m.setPpuBanks()
+		case 0x06, 0x07:
+			m.p[r&0x01] = data
+			m.setCpuBanks()
+		}
+	case 0xa000:
+		m.r[2] = data
+		if !m.sys.rom.b4Screen {
+			if data&0x01 != 0 {
+				m.mem.setVramMirror(memVramMirrorH)
+			} else {
+				m.mem.setVramMirror(memVramMirrorV)
+			}
+		}
+	case 0xa001:
+		m.r[3] = data
+	case 0xc000:
+		m.r[4], m.irqLatch = data, data
+	case 0xc001:
+		m.r[5] = data
+		if m.sys.scanline < ScreenHeight {
+			m.irqCnt |= 0x80
+			m.irqPreset = true
+		} else {
+			m.irqCnt |= 0x80
+			m.irqPreset, m.irqPresetVbl = false, true
+		}
+	case 0xe000:
+		m.r[6] = data
+		m.irqEn = false
+		m.clearIntr()
+	case 0xe001:
+		m.r[7] = data
+		m.irqEn = true
+	}
+}
+
+func (m *mapper012) hSync(scanline uint16) {
+	if scanline < ScreenHeight && m.isPpuDisp() {
+		if m.irqPresetVbl {
+			m.irqCnt, m.irqPresetVbl = m.irqLatch, false
+		}
+		if m.irqPreset {
+			m.irqCnt, m.irqPreset = m.irqLatch, false
+		} else if m.irqCnt != 0 {
+			m.irqCnt--
+		}
+		if m.irqCnt == 0 {
+			if m.irqEn && m.irqLatch != 0 {
+				m.setIntr()
+			}
+			m.irqPreset = true
+		}
+	}
+}
+
 // 013
 
 type mapper013 struct {
@@ -1174,4 +1326,61 @@ func (m *mapper013) reset() {
 func (m *mapper013) write(addr uint16, data byte) {
 	m.mem.setProm32kBank(uint32((data & 0x30) >> 4))
 	m.mem.setCram4kBank(4, uint32(data&0x03))
+}
+
+// 015
+
+type mapper015 struct {
+	baseMapper
+}
+
+func newMapper015(bm *baseMapper) Mapper {
+	return &mapper015{baseMapper: *bm}
+}
+
+func (m *mapper015) reset() {
+	m.mem.setProm32kBank(0)
+}
+
+func (m *mapper015) write(addr uint16, data byte) {
+	b := uint32(data&0x3f) << 1
+	switch addr {
+	case 0x8000:
+		if data&0x80 != 0 {
+			m.mem.setProm32kBank4(b+1, b, b+3, b+2)
+		} else {
+			m.mem.setProm32kBank4(b, b+1, b+2, b+3)
+		}
+		if data&0x40 != 0 {
+			m.mem.setVramMirror(memVramMirrorH)
+		} else {
+			m.mem.setVramMirror(memVramMirrorV)
+		}
+	case 0x8001:
+		if data&0x80 != 0 {
+			m.mem.setProm8kBank(6, b+1)
+			m.mem.setProm8kBank(7, b)
+		} else {
+			m.mem.setProm8kBank(6, b)
+			m.mem.setProm8kBank(7, b+1)
+		}
+	case 0x8002:
+		if data&0x80 != 0 {
+			b++
+		}
+		m.mem.setProm32kBank4(b, b, b, b)
+	case 0x8003:
+		if data&0x80 != 0 {
+			m.mem.setProm8kBank(6, b+1)
+			m.mem.setProm8kBank(7, b)
+		} else {
+			m.mem.setProm8kBank(6, b)
+			m.mem.setProm8kBank(7, b+1)
+		}
+		if data&0x40 != 0 {
+			m.mem.setVramMirror(memVramMirrorH)
+		} else {
+			m.mem.setVramMirror(memVramMirrorV)
+		}
+	}
 }

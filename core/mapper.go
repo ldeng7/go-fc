@@ -26,10 +26,10 @@ func newMapperNil(bm *baseMapper) Mapper { return nil }
 var mapperTable = [256]func(bm *baseMapper) Mapper{
 	// 0x
 	newMapper000, newMapper001, newMapper002, newMapper003, newMapper004, newMapper005, newMapper006, newMapper007,
-	newMapper008, newMapper009, newMapper010, newMapper011, newMapperNil, newMapper013, newMapperNil, newMapperNil,
+	newMapper008, newMapper009, newMapper010, newMapper011, newMapper012, newMapper013, newMapperNil, newMapper015,
 	// 1x
-	newMapper016, newMapperNil, newMapper018, newMapper019, newMapperNil, newMapperNil, newMapper022, newMapper023,
-	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
+	newMapper016, newMapper017, newMapper018, newMapper019, newMapperNil, newMapper021, newMapper022, newMapper023,
+	newMapper024, newMapper025, newMapper026, newMapper027, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
 	// 2x
 	newMapperNil, newMapper033, newMapper034, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
 	newMapper040, newMapper041, newMapperNil, newMapper043, newMapper044, newMapper045, newMapper046, newMapper047,

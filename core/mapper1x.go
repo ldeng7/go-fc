@@ -404,6 +404,69 @@ func (m *mapper016) clock(nCycle int64) {
 	}
 }
 
+// 017
+
+type mapper017 struct {
+	baseMapper
+	irqEn    bool
+	irqCnt   uint32
+	irqLatch uint32
+}
+
+func newMapper017(bm *baseMapper) Mapper {
+	return &mapper017{baseMapper: *bm}
+}
+
+func (m *mapper017) reset() {
+	m.irqEn, m.irqCnt, m.irqLatch = false, 0, 0
+	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	if m.mem.nVrom1kPage != 0 {
+		m.mem.setVrom8kBank(0)
+	}
+}
+
+func (m *mapper017) writeLow(addr uint16, data byte) {
+	switch addr {
+	case 0x42fe:
+		if data&0x10 != 0 {
+			m.mem.setVramMirror(memVramMirror4H)
+		} else {
+			m.mem.setVramMirror(memVramMirror4L)
+		}
+	case 0x42ff:
+		if data&0x10 != 0 {
+			m.mem.setVramMirror(memVramMirrorH)
+		} else {
+			m.mem.setVramMirror(memVramMirrorV)
+		}
+	case 0x4501:
+		m.irqEn = false
+		m.clearIntr()
+	case 0x4502:
+		m.irqLatch = (m.irqLatch & 0xff00) | uint32(data)
+	case 0x4503:
+		m.irqLatch = (m.irqLatch & 0x00ff) | (uint32(data) << 8)
+		m.irqEn, m.irqCnt = true, m.irqLatch
+	case 0x4504, 0x4505, 0x4506, 0x4507:
+		m.mem.setProm8kBank(byte(addr&0x07), uint32(data))
+	case 0x4510, 0x4511, 0x4512, 0x4513, 0x4514, 0x4515, 0x4516, 0x4517:
+		m.mem.setVrom1kBank(byte(addr&0x07), uint32(data))
+	default:
+		m.baseMapper.writeLow(addr, data)
+	}
+}
+
+func (m *mapper017) hSync(scanline uint16) {
+	if m.irqEn {
+		if m.irqCnt >= 0xff8e {
+			m.setIntr()
+			m.irqCnt &= 0xffff
+		} else {
+			m.irqCnt += 113
+		}
+	}
+}
+
 // 018
 
 type mapper018 struct {
@@ -437,7 +500,7 @@ func (m *mapper018) write(addr uint16, data byte) {
 		m.mem.setProm8kBank(i+4, uint32(m.r[i]))
 	case 0x8001, 0x8003, 0x9001:
 		i := (byte(addr>>11) - 0x10) | (byte(addr&0x02) >> 1)
-		m.r[i] = (m.r[i] & 0x0f) | ((data & 0x0f) << 4)
+		m.r[i] = (m.r[i] & 0x0f) | (data << 4)
 		m.mem.setProm8kBank(i+4, uint32(m.r[i]))
 	case 0xa000, 0xa002, 0xb000, 0xb002, 0xc000, 0xc002, 0xd000, 0xd002:
 		i := (byte(addr>>11) - 0x14) | (byte(addr&0x02) >> 1)
@@ -445,7 +508,7 @@ func (m *mapper018) write(addr uint16, data byte) {
 		m.mem.setVrom1kBank(i, uint32(m.r[i+3]))
 	case 0xa001, 0xa003, 0xb001, 0xb003, 0xc001, 0xc003, 0xd001, 0xd003:
 		i := (byte(addr>>11) - 0x14) | (byte(addr&0x02) >> 1)
-		m.r[i+3] = (m.r[i+3] & 0x0f) | ((data & 0x0f) << 4)
+		m.r[i+3] = (m.r[i+3] & 0x0f) | (data << 4)
 		m.mem.setVrom1kBank(i, uint32(m.r[i+3]))
 	case 0xe000, 0xe001, 0xe002, 0xe003:
 		i := addr & 0x03
@@ -627,6 +690,105 @@ func (m *mapper019) clock(nCycle int64) {
 	}
 }
 
+// 021
+
+type mapper021 struct {
+	baseMapper
+	irqEn    byte
+	irqCnt   byte
+	irqLatch byte
+	irqClk   int16
+	r        [9]byte
+}
+
+func newMapper021(bm *baseMapper) Mapper {
+	return &mapper021{baseMapper: *bm}
+}
+
+func (m *mapper021) reset() {
+	m.irqEn, m.irqCnt, m.irqLatch, m.irqClk = 0, 0, 0, 0
+	for i := byte(0); i < 8; i++ {
+		m.r[i] = i
+	}
+	m.r[8] = 0
+	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+}
+
+func (m *mapper021) write(addr uint16, data byte) {
+	addr &= 0xf0cf
+	switch addr {
+	case 0x8000:
+		if m.r[8]&0x02 == 0 {
+			m.mem.setProm8kBank(4, uint32(data))
+		} else {
+			m.mem.setProm8kBank(6, uint32(data))
+		}
+	case 0x9000:
+		if data != 0xff {
+			switch data & 0x03 {
+			case 0x00:
+				m.mem.setVramMirror(memVramMirrorV)
+			case 0x01:
+				m.mem.setVramMirror(memVramMirrorH)
+			case 0x02:
+				m.mem.setVramMirror(memVramMirror4L)
+			case 0x03:
+				m.mem.setVramMirror(memVramMirror4H)
+			}
+		}
+	case 0x9002, 0x9080:
+		m.r[8] = data
+	case 0xa000:
+		m.mem.setProm8kBank(5, uint32(data))
+	case 0xb000, 0xb001, 0xb004, 0xb080, 0xc000, 0xc001, 0xc004, 0xc080,
+		0xd000, 0xd001, 0xd004, 0xd080, 0xe000, 0xe001, 0xe004, 0xe080:
+		i := (byte(addr>>11) - 0x16)
+		switch addr & 0x00ff {
+		case 0x01, 0x04, 0x80:
+			i |= 0x01
+		}
+		m.r[i] = (m.r[i] & 0xf0) | (data & 0x0f)
+		m.mem.setVrom1kBank(i, uint32(m.r[i]))
+	case 0xb002, 0xb040, 0xb003, 0xb006, 0xb0c0, 0xc002, 0xc040, 0xc003, 0xc006, 0xc0c0,
+		0xd002, 0xd040, 0xd003, 0xd006, 0xd0c0, 0xe002, 0xe040, 0xe003, 0xe006, 0xe0c0:
+		i := (byte(addr>>11) - 0x16)
+		switch addr & 0x00ff {
+		case 0x03, 0x06, 0xc0:
+			i |= 0x01
+		}
+		m.r[i] = (m.r[i] & 0x0f) | (data << 4)
+		m.mem.setVrom1kBank(i, uint32(m.r[i]))
+	case 0xf000:
+		m.irqLatch = (m.irqLatch & 0xf0) | (data & 0x0f)
+	case 0xf002, 0xf040:
+		m.irqLatch = (m.irqLatch & 0x0f) | (data << 4)
+	case 0xf003, 0xf006, 0xf0c0:
+		m.irqEn, m.irqClk = (m.irqEn&0x01)*3, 0
+		m.clearIntr()
+	case 0xf004, 0xf080:
+		m.irqEn = data & 0x03
+		if m.irqEn&0x02 != 0 {
+			m.irqCnt, m.irqClk = m.irqLatch, 0
+		}
+		m.clearIntr()
+	}
+}
+
+func (m *mapper021) clock(nCycle int64) {
+	if m.irqEn&0x02 != 0 {
+		m.irqClk -= int16(nCycle)
+		if m.irqClk < 0 {
+			m.irqClk += 114
+			if m.irqCnt == 0xff {
+				m.irqCnt = m.irqLatch
+				m.setIntr()
+			} else {
+				m.irqCnt++
+			}
+		}
+	}
+}
+
 // 022
 
 type mapper022 struct {
@@ -684,9 +846,11 @@ func (m *mapper023) reset() {
 	if m.sys.conf.PatchTyp&0x01 != 0 {
 		m.addrMask = 0xf00c
 	}
+	m.irqEn, m.irqCnt, m.irqLatch, m.irqClk = 0, 0, 0, 0
 	for i := byte(0); i < 8; i++ {
 		m.r[i] = i
 	}
+	m.r[8] = 0
 	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
 	m.mem.setVrom8kBank(0)
 }
@@ -695,10 +859,10 @@ func (m *mapper023) write(addr uint16, data byte) {
 	addr &= m.addrMask
 	switch addr {
 	case 0x8000, 0x8004, 0x8008, 0x800c:
-		if m.r[8] != 0 {
-			m.mem.setProm8kBank(6, uint32(data))
-		} else {
+		if m.r[8] == 0 {
 			m.mem.setProm8kBank(4, uint32(data))
+		} else {
+			m.mem.setProm8kBank(6, uint32(data))
 		}
 	case 0x9000:
 		if data != 0xff {
@@ -725,13 +889,13 @@ func (m *mapper023) write(addr uint16, data byte) {
 	case 0xb001, 0xb004, 0xb003, 0xb00c, 0xc001, 0xc004, 0xc003, 0xc00c,
 		0xd001, 0xd004, 0xd003, 0xd00c, 0xe001, 0xe004, 0xe003, 0xe00c:
 		i := (byte(addr>>11) - 0x16) | (byte(addr&0x02) >> 1) | (byte(addr&0x08) >> 3)
-		m.r[i] = (m.r[i] & 0x0f) | ((data & 0x0f) << 4)
+		m.r[i] = (m.r[i] & 0x0f) | (data << 4)
 		m.mem.setVrom1kBank(i, uint32(m.r[i]))
 	case 0xf000:
 		m.irqLatch = (m.irqLatch & 0xf0) | (data & 0x0f)
 		m.clearIntr()
 	case 0xf004:
-		m.irqLatch = (m.irqLatch & 0x0f) | ((data & 0x0f) << 4)
+		m.irqLatch = (m.irqLatch & 0x0f) | (data << 4)
 		m.clearIntr()
 	case 0xf008:
 		m.irqEn, m.irqCnt, m.irqClk = data&0x03, m.irqLatch, 0
@@ -744,7 +908,7 @@ func (m *mapper023) write(addr uint16, data byte) {
 
 func (m *mapper023) clock(nCycle int64) {
 	if m.irqEn&0x02 != 0 {
-		m.irqClk += uint16(nCycle * 3)
+		m.irqClk += uint16(nCycle) * 3
 		for m.irqClk >= 341 {
 			m.irqClk -= 341
 			m.irqCnt++
@@ -752,6 +916,340 @@ func (m *mapper023) clock(nCycle int64) {
 				m.irqCnt = m.irqLatch
 				m.setIntr()
 			}
+		}
+	}
+}
+
+// 024
+
+type mapper024 struct {
+	baseMapper
+	irqEn    byte
+	irqCnt   byte
+	irqLatch byte
+	irqClk   uint16
+}
+
+func newMapper024(bm *baseMapper) Mapper {
+	return &mapper024{baseMapper: *bm}
+}
+
+func (m *mapper024) reset() {
+	m.irqEn, m.irqCnt, m.irqLatch, m.irqClk = 0, 0, 0, 0
+	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	if m.mem.nVrom1kPage != 0 {
+		m.mem.setVrom8kBank(0)
+	}
+	m.sys.renderMode = RenderModePost
+}
+
+func (m *mapper024) write(addr uint16, data byte) {
+	addr &= 0xf003
+	switch addr {
+	case 0x8000:
+		m.mem.setProm16kBank(4, uint32(data))
+	case 0xb003:
+		switch data & 0x0c {
+		case 0x00:
+			m.mem.setVramMirror(memVramMirrorV)
+		case 0x04:
+			m.mem.setVramMirror(memVramMirrorH)
+		case 0x08:
+			m.mem.setVramMirror(memVramMirror4L)
+		case 0x0c:
+			m.mem.setVramMirror(memVramMirror4H)
+		}
+	case 0xc000:
+		m.mem.setProm8kBank(6, uint32(data))
+	case 0xd000, 0xd001, 0xd002, 0xd003:
+		i := byte(addr)
+		m.mem.setVrom1kBank(((i&0x01)<<1)|((i&0x02)>>1), uint32(data))
+	case 0xe000, 0xe001, 0xe002, 0xe003:
+		i := byte(addr)
+		m.mem.setVrom1kBank(0x04|((i&0x01)<<1)|((i&0x02)>>1), uint32(data))
+	case 0xf000:
+		m.irqLatch = data
+	case 0xf001:
+		m.irqEn = data & 0x03
+		if m.irqEn&0x02 != 0 {
+			m.irqCnt, m.irqClk = m.irqLatch, 0
+		}
+		m.clearIntr()
+	case 0xf002:
+		m.irqEn = (m.irqEn & 0x01) * 3
+		m.clearIntr()
+	}
+}
+
+func (m *mapper024) clock(nCycle int64) {
+	if m.irqEn&0x02 != 0 {
+		m.irqClk += uint16(nCycle)
+		if m.irqClk >= 114 {
+			m.irqClk -= 114
+			if m.irqCnt == 0xff {
+				m.irqCnt = m.irqLatch
+				m.setIntr()
+			} else {
+				m.irqCnt++
+			}
+		}
+	}
+}
+
+// 025
+
+type mapper025 struct {
+	baseMapper
+	irqEn      byte
+	irqCnt     byte
+	irqLatch   byte
+	irqClk     uint16
+	r1, r2, r3 byte
+	r          [8]byte
+}
+
+func newMapper025(bm *baseMapper) Mapper {
+	return &mapper025{baseMapper: *bm}
+}
+
+func (m *mapper025) reset() {
+	m.irqEn, m.irqCnt, m.irqLatch, m.irqClk = 0, 0, 0, 0
+	for i := 0; i < 8; i++ {
+		m.r[i] = 0
+	}
+	m.r1, m.r2, m.r3 = 0, byte(m.mem.nProm8kPage-2), 0
+	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+}
+
+func (m *mapper025) write(addr uint16, data byte) {
+	switch addr & 0xf000 {
+	case 0x8000:
+		if m.r3&0x02 == 0 {
+			m.r1 = data
+			m.mem.setProm8kBank(4, uint32(data))
+		} else {
+			m.r2 = data
+			m.mem.setProm8kBank(6, uint32(data))
+		}
+	case 0xa000:
+		m.mem.setProm8kBank(5, uint32(data))
+	}
+	addr &= 0xf00f
+	switch addr {
+	case 0x9000:
+		switch data & 0x03 {
+		case 0x00:
+			m.mem.setVramMirror(memVramMirrorV)
+		case 0x01:
+			m.mem.setVramMirror(memVramMirrorH)
+		case 0x02:
+			m.mem.setVramMirror(memVramMirror4L)
+		case 0x03:
+			m.mem.setVramMirror(memVramMirror4H)
+		}
+	case 0x9001, 0x9004:
+		if m.r3&0x02 != data&0x02 {
+			m.r1, m.r2 = m.r2, m.r1
+			m.mem.setProm8kBank(4, uint32(m.r1))
+			m.mem.setProm8kBank(6, uint32(m.r2))
+		}
+		m.r3 = data
+	case 0xb000, 0xb001, 0xb004, 0xc000, 0xc001, 0xc004,
+		0xd000, 0xd001, 0xd004, 0xe000, 0xe001, 0xe004:
+		i := (byte(addr>>11) - 0x16) | byte(addr&0x01) | (byte(addr&0x04) >> 2)
+		m.r[i] = (m.r[i] & 0xf0) | (data & 0x0f)
+		m.mem.setVrom1kBank(i, uint32(m.r[i]))
+	case 0xb002, 0xb008, 0xb003, 0xb00c, 0xc002, 0xc008, 0xc003, 0xc00c,
+		0xd002, 0xd008, 0xd003, 0xd00c, 0xe002, 0xe008, 0xe003, 0xe00c:
+		i := (byte(addr>>11) - 0x16) | byte(addr&0x01) | (byte(addr&0x04) >> 2)
+		m.r[i] = (m.r[i] & 0x0f) | (data << 4)
+		m.mem.setVrom1kBank(i, uint32(m.r[i]))
+	case 0xf000:
+		m.irqLatch = (m.irqLatch & 0xf0) | (data & 0x0f)
+		m.clearIntr()
+	case 0xf002, 0xf008:
+		m.irqLatch = (m.irqLatch & 0x0f) | (data << 4)
+		m.clearIntr()
+	case 0xf001, 0xf004:
+		m.irqEn, m.irqCnt, m.irqClk = data&0x03, m.irqLatch, 0
+		m.clearIntr()
+	case 0xf003, 0xf00c:
+		m.irqEn = (m.irqEn & 0x01) * 3
+		m.clearIntr()
+	}
+}
+
+func (m *mapper025) clock(nCycle int64) {
+	if m.irqEn&0x02 != 0 {
+		m.irqClk += uint16(nCycle) * 3
+		for m.irqClk >= 341 {
+			m.irqClk -= 341
+			m.irqCnt++
+			if m.irqCnt == 0 {
+				m.irqCnt = m.irqLatch
+				m.setIntr()
+			}
+		}
+	}
+}
+
+// 026
+
+type mapper026 struct {
+	baseMapper
+	irqEn    byte
+	irqCnt   byte
+	irqLatch byte
+	irqClk   uint16
+}
+
+func newMapper026(bm *baseMapper) Mapper {
+	return &mapper026{baseMapper: *bm}
+}
+
+func (m *mapper026) reset() {
+	m.irqEn, m.irqCnt, m.irqLatch, m.irqClk = 0, 0, 0, 0
+	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	if m.mem.nVrom1kPage != 0 {
+		m.mem.setVrom8kBank(0)
+	}
+}
+
+func (m *mapper026) write(addr uint16, data byte) {
+	addr &= 0xf003
+	switch addr {
+	case 0x8000:
+		m.mem.setProm16kBank(4, uint32(data))
+	case 0xb003:
+		switch data & 0x7f {
+		case 0x08, 0x2c:
+			m.mem.setVramMirror(memVramMirror4H)
+		case 0x020:
+			m.mem.setVramMirror(memVramMirrorV)
+		case 0x024:
+			m.mem.setVramMirror(memVramMirrorH)
+		case 0x028:
+			m.mem.setVramMirror(memVramMirror4L)
+		}
+	case 0xc000:
+		m.mem.setProm8kBank(6, uint32(data))
+	case 0xd000, 0xd001, 0xd002, 0xd003:
+		i := byte(addr)
+		m.mem.setVrom1kBank(((i&0x01)<<1)|((i&0x02)>>1), uint32(data))
+	case 0xe000, 0xe001, 0xe002, 0xe003:
+		i := byte(addr)
+		m.mem.setVrom1kBank(0x04|((i&0x01)<<1)|((i&0x02)>>1), uint32(data))
+	case 0xf000:
+		m.irqLatch = data
+	case 0xf001:
+		m.irqEn = (m.irqEn & 0x01) * 3
+		m.clearIntr()
+	case 0xf002:
+		m.irqEn = data & 0x03
+		if m.irqEn&0x02 != 0 {
+			m.irqCnt, m.irqClk = m.irqLatch, 0
+		}
+		m.clearIntr()
+	}
+}
+
+func (m *mapper026) clock(nCycle int64) {
+	if m.irqEn&0x02 != 0 {
+		m.irqClk += uint16(nCycle)
+		if m.irqClk >= 114 {
+			m.irqClk -= 114
+			if m.irqCnt >= 0xff {
+				m.irqCnt = m.irqLatch
+				m.setIntr()
+			} else {
+				m.irqCnt++
+			}
+		}
+	}
+}
+
+// 027
+
+type mapper027 struct {
+	baseMapper
+	irqEn    byte
+	irqCnt   byte
+	irqLatch byte
+	r        [9]byte
+}
+
+func newMapper027(bm *baseMapper) Mapper {
+	return &mapper027{baseMapper: *bm}
+}
+
+func (m *mapper027) reset() {
+	m.irqEn, m.irqCnt, m.irqLatch = 0, 0, 0
+	for i := byte(0); i < 8; i++ {
+		m.r[i] = i
+	}
+	m.r[8] = 0
+	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+}
+
+func (m *mapper027) write(addr uint16, data byte) {
+	addr &= 0xf0cf
+	switch addr {
+	case 0x8000:
+		if m.r[8] == 0 {
+			m.mem.setProm8kBank(4, uint32(data))
+		} else {
+			m.mem.setProm8kBank(6, uint32(data))
+		}
+	case 0x9000:
+		if data != 0xff {
+			switch data & 0x03 {
+			case 0x00:
+				m.mem.setVramMirror(memVramMirrorV)
+			case 0x01:
+				m.mem.setVramMirror(memVramMirrorH)
+			case 0x02:
+				m.mem.setVramMirror(memVramMirror4L)
+			case 0x03:
+				m.mem.setVramMirror(memVramMirror4H)
+			}
+		}
+	case 0x9002, 0x9080:
+		m.r[8] = data
+	case 0xa000:
+		m.mem.setProm8kBank(5, uint32(data))
+	case 0xb000, 0xb002, 0xc000, 0xc002, 0xd000, 0xd002, 0xe000, 0xe002:
+		i := (byte(addr>>11) - 0x16) | (byte(addr&0x02) >> 1)
+		m.r[i] = (m.r[i] & 0xf0) | (data & 0x0f)
+		m.mem.setVrom1kBank(i, uint32(m.r[i]))
+	case 0xb001, 0xb003, 0xc001, 0xc003, 0xd001, 0xd003, 0xe001, 0xe003:
+		i := (byte(addr>>11) - 0x16) | (byte(addr&0x02) >> 1)
+		m.r[i] = (m.r[i] & 0x0f) | (data << 4)
+		m.mem.setVrom1kBank(i, uint32(m.r[i]))
+	case 0xf000:
+		m.irqLatch = (m.irqLatch & 0xf0) | (data & 0x0f)
+		m.clearIntr()
+	case 0xf001:
+		m.irqLatch = (m.irqLatch & 0x0f) | (data << 4)
+		m.clearIntr()
+	case 0xf002:
+		m.irqEn = (m.irqEn & 0x01) * 3
+		m.clearIntr()
+	case 0xf003:
+		m.irqEn = m.irqEn & 0x03
+		if m.irqEn&0x02 != 0 {
+			m.irqCnt = m.irqLatch
+		}
+		m.clearIntr()
+	}
+}
+
+func (m *mapper027) hSync(scanline uint16) {
+	if m.irqEn&0x02 != 0 {
+		if m.irqCnt == 0xff {
+			m.irqCnt = m.irqLatch
+			m.setIntr()
+		} else {
+			m.irqCnt++
 		}
 	}
 }

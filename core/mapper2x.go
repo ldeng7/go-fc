@@ -1,5 +1,66 @@
 package core
 
+// 032
+
+type mapper032 struct {
+	baseMapper
+	patchTyp bool
+	r        byte
+}
+
+func newMapper032(bm *baseMapper) Mapper {
+	return &mapper032{baseMapper: *bm}
+}
+
+func (m *mapper032) reset() {
+	patch := m.sys.conf.PatchTyp
+	if patch&0x01 != 0 {
+		m.patchTyp = true
+	}
+	m.r = 0
+	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	if m.mem.nVrom1kPage != 0 {
+		m.mem.setVrom8kBank(0)
+	}
+	if patch&0x02 != 0 {
+		m.mem.setProm32kBank4(30, 31, 30, 31)
+	}
+}
+
+func (m *mapper032) write(addr uint16, data byte) {
+	switch addr & 0xf000 {
+	case 0x8000:
+		if m.r&0x02 == 0 {
+			m.mem.setProm8kBank(4, uint32(data))
+		} else {
+			m.mem.setProm8kBank(6, uint32(data))
+		}
+	case 0x9000:
+		m.r = data
+		if data&0x01 != 0 {
+			m.mem.setVramMirror(memVramMirrorH)
+		} else {
+			m.mem.setVramMirror(memVramMirrorV)
+		}
+	case 0xa000:
+		m.mem.setProm8kBank(5, uint32(data))
+	}
+	switch addr & 0xf007 {
+	case 0xb000, 0xb001, 0xb002, 0xb003, 0xb004, 0xb005:
+		m.mem.setVrom1kBank(byte(addr&0x07), uint32(data))
+	case 0xb006:
+		m.mem.setVrom1kBank(6, uint32(data))
+		if m.patchTyp && data&0x40 != 0 {
+			m.mem.setVramBank(0, 0, 0, 1)
+		}
+	case 0xb007:
+		m.mem.setVrom1kBank(7, uint32(data))
+		if m.patchTyp && data&0x40 != 0 {
+			m.mem.setVramMirror(memVramMirror4L)
+		}
+	}
+}
+
 // 033
 
 type mapper033 struct {
@@ -197,6 +258,61 @@ func (m *mapper041) write(addr uint16, data byte) {
 	if m.r0 != 0 {
 		m.r1 = (m.r1 & 0x0c) | (byte(addr) & 0x03)
 		m.mem.setVrom8kBank(uint32(m.r1))
+	}
+}
+
+// 042
+
+type mapper042 struct {
+	baseMapper
+	irqEn  bool
+	irqCnt byte
+}
+
+func newMapper042(bm *baseMapper) Mapper {
+	return &mapper042{baseMapper: *bm}
+}
+
+func (m *mapper042) reset() {
+	m.irqEn, m.irqCnt = false, 0
+	m.mem.setProm8kBank(3, 0)
+	b := m.mem.nProm8kPage
+	m.mem.setProm32kBank4(b-4, b-3, b-2, b-1)
+	if m.mem.nVrom1kPage != 0 {
+		m.mem.setVrom8kBank(0)
+	}
+}
+
+func (m *mapper042) write(addr uint16, data byte) {
+	switch addr & 0xe003 {
+	case 0xe000:
+		m.mem.setProm8kBank(3, uint32(data&0x0f))
+	case 0xe001:
+		if data&0x08 != 0 {
+			m.mem.setVramMirror(memVramMirrorH)
+		} else {
+			m.mem.setVramMirror(memVramMirrorV)
+		}
+	case 0xe002:
+		if data&0x02 != 0 {
+			m.irqEn = true
+		} else {
+			m.irqEn, m.irqCnt = false, 0
+		}
+		m.clearIntr()
+	}
+}
+
+func (m *mapper042) hSync(scanline uint16) {
+	m.clearIntr()
+	if m.irqEn {
+		if m.irqCnt < 215 {
+			m.irqCnt++
+		}
+		if m.irqCnt == 215 {
+			m.irqEn = false
+			m.setIntr()
+		}
 	}
 }
 

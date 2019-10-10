@@ -31,8 +31,8 @@ var mapperTable = [256]func(bm *baseMapper) Mapper{
 	newMapper016, newMapper017, newMapper018, newMapper019, newMapperNil, newMapper021, newMapper022, newMapper023,
 	newMapper024, newMapper025, newMapper026, newMapper027, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
 	// 2x
-	newMapperNil, newMapper033, newMapper034, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
-	newMapper040, newMapper041, newMapperNil, newMapper043, newMapper044, newMapper045, newMapper046, newMapper047,
+	newMapper032, newMapper033, newMapper034, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
+	newMapper040, newMapper041, newMapper042, newMapper043, newMapper044, newMapper045, newMapper046, newMapper047,
 	// 3x
 	newMapperNil, newMapper049, newMapperNil, newMapperNil, newMapper052, newMapperNil, newMapperNil, newMapperNil,
 	newMapperNil, newMapper057, newMapper058, newMapperNil, newMapper060, newMapper061, newMapper062, newMapperNil,

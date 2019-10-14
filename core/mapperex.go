@@ -12,7 +12,7 @@ func newMapper225(bm *baseMapper) Mapper {
 
 func (m *mapper225) reset() {
 	m.mem.setProm32kBank(0)
-	if m.mem.nVrom1kPage != 0 {
+	if m.nVrom1kPage != 0 {
 		m.mem.setVrom8kBank(0)
 	}
 }
@@ -208,7 +208,7 @@ func (m *mapper230) reset() {
 	if m.idx {
 		m.mem.setProm32kBank4(0, 1, 14, 15)
 	} else {
-		m.mem.setProm32kBank4(16, 17, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+		m.mem.setProm32kBank4(16, 17, m.nProm8kPage-2, m.nProm8kPage-1)
 	}
 }
 
@@ -244,7 +244,7 @@ func newMapper231(bm *baseMapper) Mapper {
 
 func (m *mapper231) reset() {
 	m.mem.setProm32kBank(0)
-	if m.mem.nVrom1kPage != 0 {
+	if m.nVrom1kPage != 0 {
 		m.mem.setVrom8kBank(0)
 	}
 }
@@ -276,7 +276,7 @@ func newMapper232(bm *baseMapper) Mapper {
 }
 
 func (m *mapper232) reset() {
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
 	m.r0 = 0x0c
 }
 
@@ -399,7 +399,7 @@ func (m *mapper235) reset() {
 func (m *mapper235) write(addr uint16, data byte) {
 	i := uint32(((addr & 0x0300) >> 3) | (addr & 0x001f))
 	b := false
-	switch m.mem.nProm8kPage {
+	switch m.nProm8kPage {
 	case 128:
 		if addr&0x0300 != 0 {
 			b = true
@@ -458,7 +458,7 @@ func newMapper236(bm *baseMapper) Mapper {
 }
 
 func (m *mapper236) reset() {
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
 }
 
 func (m *mapper236) write(addr uint16, data byte) {

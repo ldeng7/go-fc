@@ -12,7 +12,7 @@ func newMapper148(bm *baseMapper) Mapper {
 
 func (m *mapper148) reset() {
 	m.mem.setProm32kBank(0)
-	if m.mem.nVrom1kPage != 0 {
+	if m.nVrom1kPage != 0 {
 		m.mem.setVrom8kBank(0)
 	}
 }
@@ -91,7 +91,7 @@ func newMapper151(bm *baseMapper) Mapper {
 }
 
 func (m *mapper151) reset() {
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
 }
 
 func (m *mapper151) write(addr uint16, data byte) {

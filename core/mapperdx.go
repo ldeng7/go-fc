@@ -11,9 +11,9 @@ func newMapper212(bm *baseMapper) Mapper {
 }
 
 func (m *mapper212) reset() {
-	np := m.mem.nProm8kPage
+	np := m.nProm8kPage
 	m.mem.setProm32kBank4(np-4, np-3, np-2, np-1)
-	if m.mem.nVrom1kPage != 0 {
+	if m.nVrom1kPage != 0 {
 		m.mem.setVrom8kBank(0)
 	}
 }
@@ -48,8 +48,8 @@ func newMapper222(bm *baseMapper) Mapper {
 }
 
 func (m *mapper222) reset() {
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
-	if m.mem.nVrom1kPage != 0 {
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
+	if m.nVrom1kPage != 0 {
 		m.mem.setVrom8kBank(0)
 	}
 	m.mem.setVramMirror(memVramMirrorV)

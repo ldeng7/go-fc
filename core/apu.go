@@ -7,19 +7,19 @@ const (
 
 type ApuDataQueue struct {
 	rp, wp uint16
-	data   [65536]int16
+	data   [65536]float32
 }
 
 func (q *ApuDataQueue) reset() {
 	q.rp, q.wp = 0, 0
 }
 
-func (q *ApuDataQueue) enqueue(d int16) {
+func (q *ApuDataQueue) enqueue(d float32) {
 	q.data[q.wp] = d
 	q.wp++
 }
 
-func (q *ApuDataQueue) Dequeue(buf []int16) {
+func (q *ApuDataQueue) Dequeue(buf []float32) {
 	b, e := q.rp, q.rp+uint16(len(buf))
 	if e >= b {
 		copy(buf, q.data[b:e])
@@ -330,13 +330,8 @@ func (apu *Apu) render() {
 			apu.ch3.render()*0x00c0 + apu.ch4.render()*0x00f0) >> 8
 		o1 := float64(o) - apu.outTmp
 		apu.outTmp += apu.cutoff * o1
-		o = int32(o1)
-		if o > 0x7fff {
-			o = 0x7fff
-		} else if o < -0x8000 {
-			o = -0x8000
-		}
-		apu.dq.enqueue(int16(o))
+		o1 /= 32768
+		apu.dq.enqueue(float32(o1))
 		apu.time += apu.rate
 	}
 	if d := int64(apu.time) - cpuNCycle; d > apu.frameNCycle/24 || d < -apu.frameNCycle/6 {

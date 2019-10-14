@@ -34,34 +34,34 @@ var mapperTable = [256]func(bm *baseMapper) Mapper{
 	newMapper032, newMapper033, newMapper034, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
 	newMapper040, newMapper041, newMapper042, newMapper043, newMapper044, newMapper045, newMapper046, newMapper047,
 	// 3x
-	newMapperNil, newMapper049, newMapperNil, newMapperNil, newMapper052, newMapperNil, newMapperNil, newMapperNil,
+	newMapper048, newMapper049, newMapper050, newMapper051, newMapper052, newMapperNil, newMapperNil, newMapperNil,
 	newMapperNil, newMapper057, newMapper058, newMapperNil, newMapper060, newMapper061, newMapper062, newMapperNil,
 	// 4x
-	newMapperNil, newMapperNil, newMapper066, newMapperNil, newMapperNil, newMapperNil, newMapper070, newMapper071,
-	newMapper072, newMapper073, newMapperNil, newMapperNil, newMapper076, newMapper077, newMapper078, newMapper079,
+	newMapper064, newMapper065, newMapper066, newMapper067, newMapper068, newMapper069, newMapper070, newMapper071,
+	newMapper072, newMapper073, newMapper074, newMapper075, newMapper076, newMapper077, newMapper078, newMapper079,
 	// 5x
-	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper086, newMapper087,
-	newMapper088, newMapper089, newMapperNil, newMapperNil, newMapper092, newMapper093, newMapper094, newMapperNil,
+	newMapper080, newMapperNil, newMapper082, newMapper083, newMapperNil, newMapper085, newMapper086, newMapper087,
+	newMapper088, newMapper089, newMapper090, newMapper091, newMapper092, newMapper093, newMapper094, newMapper095,
 	// 6x
-	newMapper096, newMapper097, newMapperNil, newMapper099, newMapperNil, newMapper101, newMapperNil, newMapperNil,
-	newMapperNil, newMapperNil, newMapperNil, newMapper107, newMapper108, newMapperNil, newMapperNil, newMapper111,
+	newMapper096, newMapper097, newMapperNil, newMapper099, newMapper100, newMapper101, newMapperNil, newMapperNil,
+	newMapperNil, newMapper105, newMapperNil, newMapper107, newMapper108, newMapper109, newMapper110, newMapper111,
 	// 7x
-	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
+	newMapper112, newMapper113, newMapper114, newMapper115, newMapper116, newMapper117, newMapper118, newMapper119,
 	newMapper120, newMapper121, newMapper122, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
 	// 8x
-	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper132, newMapper133, newMapperNil, newMapperNil,
-	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper140, newMapper141, newMapperNil, newMapperNil,
+	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper132, newMapper133, newMapper134, newMapper135,
+	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper140, newMapper141, newMapper142, newMapperNil,
 	// 9x
 	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper148, newMapperNil, newMapper150, newMapper151,
 	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
 	// ax
-	newMapperNil, newMapperNil, newMapper162, newMapper163, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
+	newMapper160, newMapperNil, newMapper162, newMapper163, newMapper164, newMapper165, newMapperNil, newMapper167,
 	newMapper168, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper174, newMapper175,
 	// bx
-	newMapper176, nil, newMapper178, nil, newMapperb4, newMapperb5, newMapperb6, newMapperb7,
-	nil, newMapperb9, newMapperba, newMapperbb, newMapperbc, newMapperbd, newMapperbe, newMapperbf,
+	newMapper176, newMapperNil, newMapper178, newMapperNil, newMapper180, newMapper181, newMapper182, newMapper183,
+	newMapper184, newMapper185, newMapperNil, newMapper187, newMapper188, newMapper189, newMapper190, newMapper191,
 	// cx
-	newMapperNil, newMapper193, newMapper194, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper199,
+	newMapperNil, newMapper193, newMapper194, newMapperNil, newMapperNil, newMapperNil, newMapper198, newMapper199,
 	newMapper200, newMapper201, newMapper202, newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapperNil,
 	// dx
 	newMapperNil, newMapperNil, newMapperNil, newMapperNil, newMapper212, newMapperNil, newMapperNil, newMapperNil,
@@ -70,20 +70,25 @@ var mapperTable = [256]func(bm *baseMapper) Mapper{
 	newMapperNil, newMapper225, newMapper226, newMapper227, newMapper228, newMapper229, newMapper230, newMapper231,
 	newMapper232, newMapper233, newMapper234, newMapper235, newMapper236, newMapper237, newMapperNil, newMapperNil,
 	// fx
-	newMapperf0, newMapperf1, newMapperf2, newMapperf3, newMapperf4, newMapperf5, newMapperf6, newMapperf7,
-	newMapperf8, newMapperf9, nil, newMapperfb, newMapperfc, newMapper253, newMapperfe, newMapperff,
+	newMapper240, newMapper241, newMapper242, newMapper243, newMapper244, newMapper245, newMapper246, newMapperNil,
+	newMapper248, newMapper249, newMapperNil, newMapper251, newMapper252, newMapper253, newMapper254, newMapper255,
 }
 
 type baseMapper struct {
-	sys      *Sys
-	mem      *Mem
-	cpuBanks [][]byte
+	sys *Sys
+	mem *Mem
+
+	nProm8kPage uint32
+	nVrom1kPage uint32
+	cpuBanks    [][]byte
 }
 
 func newMapper(sys *Sys) (Mapper, error) {
 	bm := &baseMapper{}
 	bm.sys = sys
 	bm.mem = sys.mem
+	bm.nProm8kPage = sys.mem.nProm8kPage
+	bm.nVrom1kPage = sys.mem.nVrom1kPage
 	bm.cpuBanks = sys.mem.cpuBanks[:]
 
 	m := mapperTable[sys.rom.mapperNo](bm)

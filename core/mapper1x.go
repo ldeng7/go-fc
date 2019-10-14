@@ -254,7 +254,7 @@ func (m *mapper016) reset() {
 
 	m.irqEn, m.irqClkTyp, m.irqCnt, m.irqLatch = false, true, 0, 0
 	m.r0, m.r1, m.r2 = 0, 0, 0
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
 	switch m.eepTyp {
 	case 0:
 		m.eep1.reset(m.mem.wram[:])
@@ -299,7 +299,7 @@ func (m *mapper016) write(addr uint16, data byte) {
 	if !m.patch1 {
 		switch addr & 0x0f {
 		case 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07:
-			if m.mem.nVrom1kPage != 0 {
+			if m.nVrom1kPage != 0 {
 				m.mem.setVrom1kBank(byte(addr)&0x07, uint32(data))
 			}
 			if m.eepTyp == 2 {
@@ -419,8 +419,8 @@ func newMapper017(bm *baseMapper) Mapper {
 
 func (m *mapper017) reset() {
 	m.irqEn, m.irqCnt, m.irqLatch = false, 0, 0
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
-	if m.mem.nVrom1kPage != 0 {
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
+	if m.nVrom1kPage != 0 {
 		m.mem.setVrom8kBank(0)
 	}
 }
@@ -488,8 +488,8 @@ func (m *mapper018) reset() {
 	for i := 0; i < 11; i++ {
 		m.r[i] = 0
 	}
-	m.r[2], m.r[3] = byte(m.mem.nProm8kPage-2), byte(m.mem.nProm8kPage-1)
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	m.r[2], m.r[3] = byte(m.nProm8kPage)-2, byte(m.nProm8kPage)-1
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
 }
 
 func (m *mapper018) write(addr uint16, data byte) {
@@ -586,9 +586,9 @@ func (m *mapper019) reset() {
 	}
 	m.irqEn, m.irqCnt = false, 0
 	m.r0, m.r1 = 0, 0
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
-	if m.mem.nVrom1kPage >= 8 {
-		m.mem.setVrom8kBank((m.mem.nVrom1kPage >> 3) - 1)
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
+	if m.nVrom1kPage >= 8 {
+		m.mem.setVrom8kBank((m.nVrom1kPage >> 3) - 1)
 	}
 }
 
@@ -711,7 +711,7 @@ func (m *mapper021) reset() {
 		m.r[i] = i
 	}
 	m.r[8] = 0
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
 }
 
 func (m *mapper021) write(addr uint16, data byte) {
@@ -800,7 +800,7 @@ func newMapper022(bm *baseMapper) Mapper {
 }
 
 func (m *mapper022) reset() {
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
 }
 
 func (m *mapper022) write(addr uint16, data byte) {
@@ -851,7 +851,7 @@ func (m *mapper023) reset() {
 		m.r[i] = i
 	}
 	m.r[8] = 0
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
 	m.mem.setVrom8kBank(0)
 }
 
@@ -936,8 +936,8 @@ func newMapper024(bm *baseMapper) Mapper {
 
 func (m *mapper024) reset() {
 	m.irqEn, m.irqCnt, m.irqLatch, m.irqClk = 0, 0, 0, 0
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
-	if m.mem.nVrom1kPage != 0 {
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
+	if m.nVrom1kPage != 0 {
 		m.mem.setVrom8kBank(0)
 	}
 	m.sys.renderMode = RenderModePost
@@ -1017,8 +1017,8 @@ func (m *mapper025) reset() {
 	for i := 0; i < 8; i++ {
 		m.r[i] = 0
 	}
-	m.r1, m.r2, m.r3 = 0, byte(m.mem.nProm8kPage-2), 0
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	m.r1, m.r2, m.r3 = 0, byte(m.nProm8kPage)-2, 0
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
 }
 
 func (m *mapper025) write(addr uint16, data byte) {
@@ -1109,8 +1109,8 @@ func newMapper026(bm *baseMapper) Mapper {
 
 func (m *mapper026) reset() {
 	m.irqEn, m.irqCnt, m.irqLatch, m.irqClk = 0, 0, 0, 0
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
-	if m.mem.nVrom1kPage != 0 {
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
+	if m.nVrom1kPage != 0 {
 		m.mem.setVrom8kBank(0)
 	}
 }
@@ -1188,7 +1188,7 @@ func (m *mapper027) reset() {
 		m.r[i] = i
 	}
 	m.r[8] = 0
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
 }
 
 func (m *mapper027) write(addr uint16, data byte) {

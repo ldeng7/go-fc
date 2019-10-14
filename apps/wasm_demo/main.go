@@ -17,6 +17,8 @@ type Ctx struct {
 	copyFromJsArr  js.Value
 	setFrameBuffer js.Value
 	updateScreen   js.Value
+	setAudioBuffer js.Value
+	updateAudio    js.Value
 }
 
 var keyMapP1 = map[string]byte{
@@ -30,13 +32,14 @@ var keyMapP1 = map[string]byte{
 	"KeyJ":        core.PadKeyB,
 }
 
-func (ctx *Ctx) start(romFileArr js.Value, romFileLen int) interface{} {
+func (ctx *Ctx) start(romFileArr js.Value, romFileLen int, audioSampRate int) interface{} {
 	romFile := make([]byte, romFileLen)
 	romFilePtr := (*reflect.SliceHeader)(unsafe.Pointer(&romFile)).Data
 	ctx.copyFromJsArr.Invoke(romFileArr, romFilePtr)
 
 	sysConf := &core.Conf{
-		AllSprite: true,
+		AllSprite:     true,
+		AudioSampRate: uint16(audioSampRate),
 	}
 	sys, err := core.NewSys(bytes.NewReader(romFile), sysConf)
 	if err != nil {
@@ -48,12 +51,25 @@ func (ctx *Ctx) start(romFileArr js.Value, romFileLen int) interface{} {
 		ticker := time.NewTicker(time.Duration(sys.GetFramePeriod()*1000.0) * time.Microsecond)
 		fb := &core.FrameBuffer{}
 		sys.SetFrameBuffer(fb)
-		ctx.setFrameBuffer.Invoke(uintptr(unsafe.Pointer(fb)), len(*fb)*4)
+		ctx.setFrameBuffer.Invoke(uintptr(unsafe.Pointer(fb)))
 		for _ = range ticker.C {
 			sys.RunFrame()
 			ctx.updateScreen.Invoke()
 		}
 	}()
+
+	go func() {
+		ticker := time.NewTicker(50 * time.Millisecond)
+		auSrc := sys.GetAudioDataQueue()
+		auBuf := [2205]float32{}
+		ctx.setAudioBuffer.Invoke(uintptr(unsafe.Pointer(&auBuf)))
+		auSlice := auBuf[:]
+		for _ = range ticker.C {
+			auSrc.Dequeue(auSlice)
+			ctx.updateAudio.Invoke()
+		}
+	}()
+
 	return true
 }
 
@@ -76,10 +92,12 @@ func main() {
 		copyFromJsArr:  jsGlobal.Get("copyFromJsArr"),
 		setFrameBuffer: jsGlobal.Get("setFrameBuffer"),
 		updateScreen:   jsGlobal.Get("updateScreen"),
+		setAudioBuffer: jsGlobal.Get("setAudioBuffer"),
+		updateAudio:    jsGlobal.Get("updateAudio"),
 	}
 	goFuncs := jsGlobal.Get("goFuncs")
 	goFuncs.Set("start", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
-		return ctx.start(args[0], args[1].Int())
+		return ctx.start(args[0], args[1].Int(), args[2].Int())
 	}))
 	goFuncs.Set("onKey", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
 		ctx.onKey(args[0].String(), args[1].Bool())

@@ -11,7 +11,7 @@ func newMapper000(bm *baseMapper) Mapper {
 }
 
 func (m *mapper000) reset() {
-	switch m.mem.nProm8kPage >> 1 {
+	switch m.nProm8kPage >> 1 {
 	case 1:
 		m.mem.setProm16kBank(4, 0)
 		m.mem.setProm16kBank(6, 0)
@@ -49,8 +49,8 @@ func (m *mapper001) reset() {
 
 	m.reg[0], m.reg[1], m.reg[2], m.reg[3] = 0x0c, 0, 0, 0
 	m.regBuf, m.shift = 0, 0
-	if m.mem.nProm8kPage < 64 {
-		m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	if m.nProm8kPage < 64 {
+		m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
 		m.largeTyp = false
 	} else {
 		m.mem.setProm16kBank(4, 0)
@@ -116,7 +116,7 @@ func (m *mapper001) write(addr uint16, data byte) {
 		case 0:
 			m.setVramMirror()
 		case 1, 2:
-			if m.mem.nVrom1kPage != 0 {
+			if m.nVrom1kPage != 0 {
 				if m.reg[0]&0x10 != 0 {
 					m.mem.setVrom4kBank(0, uint32(m.reg[1]))
 					m.mem.setVrom4kBank(4, uint32(m.reg[2]))
@@ -130,7 +130,7 @@ func (m *mapper001) write(addr uint16, data byte) {
 			if m.reg[0]&0x08 != 0 {
 				if m.reg[0]&0x04 != 0 {
 					m.mem.setProm16kBank(4, uint32(m.reg[3]))
-					m.mem.setProm16kBank(6, (m.mem.nProm8kPage>>1)-1)
+					m.mem.setProm16kBank(6, (m.nProm8kPage>>1)-1)
 				} else {
 					m.mem.setProm16kBank(4, 0)
 					m.mem.setProm16kBank(6, uint32(m.reg[3]))
@@ -149,17 +149,17 @@ func (m *mapper001) write(addr uint16, data byte) {
 		}
 
 		var promBase uint32 = 0
-		if m.mem.nProm8kPage >= 64 {
+		if m.nProm8kPage >= 64 {
 			promBase = uint32(m.reg[1] & 0x10)
 		}
 		if m.reg[0]&0x08 != 0 {
 			if m.reg[0]&0x04 != 0 {
 				m.mem.setProm16kBank(4, promBase+uint32(m.reg[3]&0x0f))
-				if m.mem.nProm8kPage >= 64 {
+				if m.nProm8kPage >= 64 {
 					m.mem.setProm16kBank(6, promBase+15)
 				}
 			} else {
-				if m.mem.nProm8kPage >= 64 {
+				if m.nProm8kPage >= 64 {
 					m.mem.setProm16kBank(4, promBase)
 				}
 				m.mem.setProm16kBank(6, promBase+uint32(m.reg[3]&0x0f))
@@ -168,7 +168,7 @@ func (m *mapper001) write(addr uint16, data byte) {
 			m.mem.setProm32kBank(uint32(m.reg[3] >> 1))
 		}
 
-		if m.mem.nVrom1kPage != 0 {
+		if m.nVrom1kPage != 0 {
 			if m.reg[0]&0x10 != 0 {
 				m.mem.setVrom4kBank(0, uint32(m.reg[1]))
 				m.mem.setVrom4kBank(4, uint32(m.reg[2]))
@@ -203,7 +203,7 @@ func (m *mapper002) reset() {
 	} else if patch&0x02 != 0 {
 		m.patchTyp = 2
 	}
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
 }
 
 func (m *mapper002) writeLow(addr uint16, data byte) {
@@ -233,7 +233,7 @@ func newMapper003(bm *baseMapper) Mapper {
 }
 
 func (m *mapper003) reset() {
-	switch m.mem.nProm8kPage >> 1 {
+	switch m.nProm8kPage >> 1 {
 	case 1:
 		m.mem.setProm16kBank(4, 0)
 		m.mem.setProm16kBank(6, 0)
@@ -258,8 +258,8 @@ type mapper004 struct {
 	irqPre    bool
 	irqPreVbl bool
 	p0, p1    byte
+	r         byte
 	c         [8]byte
-	r         [8]byte
 }
 
 func newMapper004(bm *baseMapper) Mapper {
@@ -267,16 +267,16 @@ func newMapper004(bm *baseMapper) Mapper {
 }
 
 func (m *mapper004) setCpuBanks() {
-	if m.r[0]&0x40 != 0 {
-		m.mem.setProm32kBank4(m.mem.nProm8kPage-2, uint32(m.p1), uint32(m.p0), m.mem.nProm8kPage-1)
+	if m.r&0x40 != 0 {
+		m.mem.setProm32kBank4(m.nProm8kPage-2, uint32(m.p1), uint32(m.p0), m.nProm8kPage-1)
 	} else {
-		m.mem.setProm32kBank4(uint32(m.p0), uint32(m.p1), m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+		m.mem.setProm32kBank4(uint32(m.p0), uint32(m.p1), m.nProm8kPage-2, m.nProm8kPage-1)
 	}
 }
 
 func (m *mapper004) setPpuBanks() {
-	if m.mem.nVrom1kPage != 0 {
-		if m.r[0]&0x80 != 0 {
+	if m.nVrom1kPage != 0 {
+		if m.r&0x80 != 0 {
 			for i := byte(0); i < 4; i++ {
 				m.mem.setVrom1kBank(i, uint32(m.c[i+4]))
 				m.mem.setVrom1kBank(i+4, uint32(m.c[i]))
@@ -287,7 +287,7 @@ func (m *mapper004) setPpuBanks() {
 			}
 		}
 	} else {
-		if m.r[0]&0x80 != 0 {
+		if m.r&0x80 != 0 {
 			for i := byte(0); i < 4; i++ {
 				m.mem.setCram1kBank(i, uint32(m.c[i+4]&0x07))
 				m.mem.setCram1kBank(i+4, uint32(m.c[i]&0x07))
@@ -322,9 +322,9 @@ func (m *mapper004) reset() {
 
 	m.irqEn, m.irqCnt, m.irqLatch = false, 0, 0xff
 	m.irqReq, m.irqPre, m.irqPreVbl = false, false, false
-	m.p0, m.p1 = 0, 1
+	m.r, m.p0, m.p1 = 0, 0, 1
 	for i := byte(0); i < 8; i++ {
-		m.c[i], m.r[i] = i, 0
+		m.c[i] = i
 	}
 	m.setCpuBanks()
 	m.setPpuBanks()
@@ -348,20 +348,19 @@ func (m *mapper004) writeLow(addr uint16, data byte) {
 func (m *mapper004) write(addr uint16, data byte) {
 	switch addr & 0xE001 {
 	case 0x8000:
-		m.r[0] = data
+		m.r = data
 		m.setCpuBanks()
 		m.setPpuBanks()
 	case 0x8001:
-		m.r[1] = data
-		r0 := m.r[0] & 0x07
-		switch r0 {
+		r := m.r & 0x07
+		switch r {
 		case 0x00, 0x01:
-			i := r0 << 1
+			i := r << 1
 			m.c[i] = data & 0xfe
 			m.c[i+1] = m.c[i] + 1
 			m.setPpuBanks()
 		case 0x02, 0x03, 0x04, 0x05:
-			m.c[r0+2] = data
+			m.c[r+2] = data
 			m.setPpuBanks()
 		case 0x06:
 			m.p0 = data
@@ -371,7 +370,6 @@ func (m *mapper004) write(addr uint16, data byte) {
 			m.setCpuBanks()
 		}
 	case 0xa000:
-		m.r[2] = data
 		if m.sys.rom.b4Screen {
 			if data&0x01 != 0 {
 				m.mem.setVramMirror(memVramMirrorH)
@@ -379,10 +377,7 @@ func (m *mapper004) write(addr uint16, data byte) {
 				m.mem.setVramMirror(memVramMirrorV)
 			}
 		}
-	case 0xa001:
-		m.r[3] = data
 	case 0xc000:
-		m.r[4] = data
 		switch m.irqTyp {
 		case 1, 5:
 			m.irqCnt = data
@@ -392,7 +387,6 @@ func (m *mapper004) write(addr uint16, data byte) {
 			m.irqLatch = data
 		}
 	case 0xc001:
-		m.r[5] = data
 		if m.irqTyp == 1 || m.irqTyp == 5 {
 			m.irqLatch = data
 		} else if m.sys.scanline < ScreenHeight || m.irqTyp == 2 {
@@ -401,11 +395,9 @@ func (m *mapper004) write(addr uint16, data byte) {
 			m.irqCnt, m.irqPre, m.irqPreVbl = m.irqCnt|0x80, false, true
 		}
 	case 0xe000:
-		m.r[6] = data
 		m.irqEn, m.irqReq = false, false
 		m.clearIntr()
 	case 0xe001:
-		m.r[7] = data
 		m.irqEn, m.irqReq = true, false
 	}
 }
@@ -547,7 +539,7 @@ func (m *mapper005) reset() {
 		m.bgBanks[i] = m.mem.vrom[b : b+0x0400 : b+0x0400]
 	}
 
-	b := m.mem.nProm8kPage - 1
+	b := m.nProm8kPage - 1
 	m.mem.setProm32kBank4(b, b, b, b)
 	m.mem.setVrom8kBank(0)
 	m.setCpuBankAlt(3, 0)
@@ -596,13 +588,13 @@ func (m *mapper005) setPpuBanks() {
 	} else {
 		switch m.chrSize {
 		case 0:
-			b := (uint32(m.c1[7]) % (m.mem.nVrom1kPage << 3)) << 13
+			b := (uint32(m.c1[7]) % (m.nVrom1kPage << 3)) << 13
 			for i := 0; i < 8; i++ {
 				m.bgBanks[i] = m.mem.vrom[b : b+0x0400 : b+0x0400]
 				b += 0x0400
 			}
 		case 1:
-			mod := m.mem.nVrom1kPage << 2
+			mod := m.nVrom1kPage << 2
 			b0, b1 := (uint32(m.c1[3])%mod)<<12, (uint32(m.c1[7])%mod)<<12
 			for i := 0; i < 4; i++ {
 				m.bgBanks[i] = m.mem.vrom[b0 : b0+0x0400 : b0+0x0400]
@@ -610,7 +602,7 @@ func (m *mapper005) setPpuBanks() {
 				b0, b1 = b0+0x0400, b1+0x0400
 			}
 		case 2:
-			mod := m.mem.nVrom1kPage << 1
+			mod := m.nVrom1kPage << 1
 			b0, b1 := (uint32(m.c1[1])%mod)<<11, (uint32(m.c1[3])%mod)<<11
 			b2, b3 := (uint32(m.c1[5])%mod)<<11, (uint32(m.c1[7])%mod)<<11
 			for i := 0; i < 2; i++ {
@@ -621,7 +613,7 @@ func (m *mapper005) setPpuBanks() {
 				b0, b1, b2, b3 = b0+0x0400, b1+0x0400, b2+0x0400, b3+0x0400
 			}
 		case 3:
-			mod := m.mem.nVrom1kPage
+			mod := m.nVrom1kPage
 			for i := 0; i < 8; i++ {
 				b := (uint32(m.c1[i]) % mod) << 10
 				m.bgBanks[i] = m.mem.vrom[b : b+0x0400 : b+0x0400]
@@ -742,7 +734,7 @@ func (m *mapper005) writeLow(addr uint16, data byte) {
 			}
 		} else if addr >= 0x6000 {
 			if m.sramWEA && m.sramWEB && m.mem.cpuBanksTyp[3] == memBankTypRam {
-				m.mem.cpuBanks[3][addr&0x1fff] = data
+				m.cpuBanks[3][addr&0x1fff] = data
 			}
 		}
 	}
@@ -752,7 +744,7 @@ func (m *mapper005) write(addr uint16, data byte) {
 	if addr >= 0x8000 && addr < 0xe000 {
 		i := addr >> 13
 		if m.sramWEA && m.sramWEB && m.mem.cpuBanksTyp[i] == memBankTypRam {
-			m.mem.cpuBanks[i][addr&0x1fff] = data
+			m.cpuBanks[i][addr&0x1fff] = data
 		}
 	}
 }
@@ -826,7 +818,7 @@ func (m *mapper005) ppuExtLatch(iNameTbl uint16, chL *byte, chH *byte, attr *byt
 				*attr = (vram[(iNameTbl&0x03ff)+0x0800] & 0xc0) >> 4
 			}
 			b := vram[(iNameTbl&0x03ff)+0x0800]
-			tile += (uint32(b&0x3f) % (m.mem.nVrom1kPage >> 2)) << 12
+			tile += (uint32(b&0x3f) % (m.nVrom1kPage >> 2)) << 12
 			*chL, *chH = vrom[tile], vrom[tile+8]
 		} else {
 			tile = (uint32(ppu.reg0&ppuReg0BgTbl) << 8)
@@ -855,7 +847,7 @@ func (m *mapper005) ppuExtLatch(iNameTbl uint16, chL *byte, chH *byte, attr *byt
 		}
 	} else {
 		iNameTbl = ((m.splitAddr & 0x03e0) | uint16(m.splitX&0x1f)) & 0x03ff
-		tile = ((uint32(m.splitPage) % (m.mem.nVrom1kPage >> 2)) << 12) +
+		tile = ((uint32(m.splitPage) % (m.nVrom1kPage >> 2)) << 12) +
 			(uint32(vram[iNameTbl+0x0800]) << 4) + uint32(m.splitY)
 		*chL, *chH = vrom[tile], vrom[tile+8]
 		iAttr := ((iNameTbl & 0x0380) >> 4) + ((iNameTbl & 0x001c) >> 2) + 0x0bc0
@@ -884,7 +876,7 @@ func newMapper006(bm *baseMapper) Mapper {
 
 func (m *mapper006) reset() {
 	m.mem.setProm32kBank4(0, 1, 14, 15)
-	if m.mem.nVrom1kPage != 0 {
+	if m.nVrom1kPage != 0 {
 		m.mem.setVrom8kBank(0)
 	} else {
 		m.mem.setCram8kBank(0)
@@ -993,7 +985,7 @@ func newMapper009(bm *baseMapper) Mapper {
 }
 
 func (m *mapper009) reset() {
-	m.mem.setProm32kBank4(0, m.mem.nProm8kPage-3, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	m.mem.setProm32kBank4(0, m.nProm8kPage-3, m.nProm8kPage-2, m.nProm8kPage-1)
 	m.r[0], m.r[1], m.r[2], m.r[3] = 0, 4, 0, 0
 	m.latchA, m.latchB = false, false
 	m.mem.setVrom4kBank(0, 4)
@@ -1075,7 +1067,7 @@ func newMapper010(bm *baseMapper) Mapper {
 func (m *mapper010) reset() {
 	m.latchA, m.latchB = 0xfe, 0xfe
 	m.r[0], m.r[1], m.r[2], m.r[3] = 0, 4, 0, 0
-	m.mem.setProm32kBank4(0, 1, m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+	m.mem.setProm32kBank4(0, 1, m.nProm8kPage-2, m.nProm8kPage-1)
 	m.mem.setVrom4kBank(0, 4)
 	m.mem.setVrom4kBank(4, 0)
 	m.sys.ppu.bChrLatch = true
@@ -1142,7 +1134,7 @@ func newMapper011(bm *baseMapper) Mapper {
 
 func (m *mapper011) reset() {
 	m.mem.setProm32kBank(0)
-	if m.mem.nVrom1kPage != 0 {
+	if m.nVrom1kPage != 0 {
 		m.mem.setVrom8kBank(0)
 	}
 	m.mem.setVramMirror(memVramMirrorV)
@@ -1150,7 +1142,7 @@ func (m *mapper011) reset() {
 
 func (m *mapper011) write(addr uint16, data byte) {
 	m.mem.setProm32kBank(uint32(data))
-	if m.mem.nVrom1kPage != 0 {
+	if m.nVrom1kPage != 0 {
 		m.mem.setVrom8kBank(uint32(data >> 4))
 	}
 }
@@ -1164,9 +1156,10 @@ type mapper012 struct {
 	irqLatch     byte
 	irqPreset    bool
 	irqPresetVbl bool
+	r            byte
 	vb           [2]uint32
 	p            [2]byte
-	r, c         [8]byte
+	c            [8]byte
 }
 
 func newMapper012(bm *baseMapper) Mapper {
@@ -1174,16 +1167,16 @@ func newMapper012(bm *baseMapper) Mapper {
 }
 
 func (m *mapper012) setCpuBanks() {
-	if m.r[0]&0x40 != 0 {
-		m.mem.setProm32kBank4(m.mem.nProm8kPage-2, uint32(m.p[1]), uint32(m.p[0]), m.mem.nProm8kPage-1)
+	if m.r&0x40 != 0 {
+		m.mem.setProm32kBank4(m.nProm8kPage-2, uint32(m.p[1]), uint32(m.p[0]), m.nProm8kPage-1)
 	} else {
-		m.mem.setProm32kBank4(uint32(m.p[0]), uint32(m.p[1]), m.mem.nProm8kPage-2, m.mem.nProm8kPage-1)
+		m.mem.setProm32kBank4(uint32(m.p[0]), uint32(m.p[1]), m.nProm8kPage-2, m.nProm8kPage-1)
 	}
 }
 
 func (m *mapper012) setPpuBanks() {
-	if m.mem.nVrom1kPage != 0 {
-		if m.r[0]&0x80 != 0 {
+	if m.nVrom1kPage != 0 {
+		if m.r&0x80 != 0 {
 			for i := byte(0); i < 4; i++ {
 				m.mem.setVrom1kBank(i, m.vb[0]+uint32(m.c[i+4]))
 			}
@@ -1196,7 +1189,7 @@ func (m *mapper012) setPpuBanks() {
 			}
 		}
 	} else {
-		if m.r[0]&0x80 != 0 {
+		if m.r&0x80 != 0 {
 			for i := byte(0); i < 4; i++ {
 				m.mem.setCram1kBank(i, uint32(m.c[i+4]&0x07))
 			}
@@ -1217,7 +1210,7 @@ func (m *mapper012) reset() {
 	m.vb[0], m.vb[1] = 0, 0
 	m.p[0], m.p[1] = 0, 0
 	for i := byte(0); i < 8; i++ {
-		m.r[i], m.c[i] = 0, i
+		m.c[i] = i
 	}
 	m.setCpuBanks()
 	m.setPpuBanks()
@@ -1227,8 +1220,8 @@ func (m *mapper012) writeLow(addr uint16, data byte) {
 	if addr > 0x4100 && addr < 0x6000 {
 		m.vb[0], m.vb[1] = uint32(data&0x01)<<8, uint32(data&0x10)<<4
 		m.setPpuBanks()
-	} else {
-		m.baseMapper.writeLow(addr, data)
+	} else if addr >= 0x6000 {
+		m.cpuBanks[addr>>13][addr&0x1fff] = data
 	}
 }
 
@@ -1239,15 +1232,14 @@ func (m *mapper012) readLow(addr uint16) byte {
 func (m *mapper012) write(addr uint16, data byte) {
 	switch addr & 0xe001 {
 	case 0x8000:
-		m.r[0] = data
+		m.r = data
 		m.setCpuBanks()
 		m.setPpuBanks()
 	case 0x8001:
-		m.r[1] = data
-		r := m.r[0] & 0x07
+		r := m.r & 0x07
 		switch r {
 		case 0x00, 0x01:
-			m.c[r<<1], m.c[(r<<1)+1] = data&0xfe, (data&0xfe)+1
+			m.c[r<<1], m.c[(r<<1)+1] = data&0xfe, (data&0xfe)|0x01
 			m.setPpuBanks()
 		case 0x02, 0x03, 0x04, 0x05:
 			m.c[r+2] = data
@@ -1257,7 +1249,6 @@ func (m *mapper012) write(addr uint16, data byte) {
 			m.setCpuBanks()
 		}
 	case 0xa000:
-		m.r[2] = data
 		if !m.sys.rom.b4Screen {
 			if data&0x01 != 0 {
 				m.mem.setVramMirror(memVramMirrorH)
@@ -1265,12 +1256,9 @@ func (m *mapper012) write(addr uint16, data byte) {
 				m.mem.setVramMirror(memVramMirrorV)
 			}
 		}
-	case 0xa001:
-		m.r[3] = data
 	case 0xc000:
-		m.r[4], m.irqLatch = data, data
+		m.irqLatch = data
 	case 0xc001:
-		m.r[5] = data
 		if m.sys.scanline < ScreenHeight {
 			m.irqCnt |= 0x80
 			m.irqPreset = true
@@ -1279,11 +1267,9 @@ func (m *mapper012) write(addr uint16, data byte) {
 			m.irqPreset, m.irqPresetVbl = false, true
 		}
 	case 0xe000:
-		m.r[6] = data
 		m.irqEn = false
 		m.clearIntr()
 	case 0xe001:
-		m.r[7] = data
 		m.irqEn = true
 	}
 }

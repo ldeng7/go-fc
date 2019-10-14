@@ -29,7 +29,7 @@ func newAudio() (*Audio, error) {
 	p.Output.Channels = 1
 	a.sampRate = uint16(p.SampleRate)
 
-	a.stream, err = portaudio.OpenStream(p, func(buf []int16) {
+	a.stream, err = portaudio.OpenStream(p, func(buf []float32) {
 		a.source.Dequeue(buf)
 	})
 	if err != nil {

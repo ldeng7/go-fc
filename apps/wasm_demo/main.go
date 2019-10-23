@@ -48,28 +48,26 @@ func (ctx *Ctx) start(romFileArr js.Value, romFileLen int, audioSampRate int) in
 	ctx.sys = sys
 
 	go func() {
-		ticker := time.NewTicker(time.Duration(sys.GetFramePeriod()*1000.0) * time.Microsecond)
+		tSys := time.NewTicker(time.Duration(sys.GetFramePeriod()*1000.0) * time.Microsecond)
 		fb := &core.FrameBuffer{}
 		sys.SetFrameBuffer(fb)
 		ctx.setFrameBuffer.Invoke(uintptr(unsafe.Pointer(fb)))
-		for _ = range ticker.C {
-			sys.RunFrame()
-			ctx.updateScreen.Invoke()
-		}
-	}()
-
-	go func() {
-		ticker := time.NewTicker(50 * time.Millisecond)
+		tAudio := time.NewTicker(50 * time.Millisecond)
 		auSrc := sys.GetAudioDataQueue()
 		auBuf := [2205]float32{}
 		ctx.setAudioBuffer.Invoke(uintptr(unsafe.Pointer(&auBuf)))
 		auSlice := auBuf[:]
-		for _ = range ticker.C {
-			auSrc.Dequeue(auSlice)
-			ctx.updateAudio.Invoke()
+		for {
+			select {
+			case <-tSys.C:
+				sys.RunFrame()
+				ctx.updateScreen.Invoke()
+			case <-tAudio.C:
+				auSrc.Dequeue(auSlice)
+				ctx.updateAudio.Invoke()
+			}
 		}
 	}()
-
 	return true
 }
 

@@ -21,7 +21,7 @@ window.setAudioBuffer = (ptr) => {
   abOffset = ptr
 }
 window.updateAudio = () => {
-  return // FIXME
+  return
   audioBuf.getChannelData(0).set(goMemArr.slice(abOffset, abOffset + audioSampRate * audioRenderPeriod))
   audioSrc = audioCtx.createBufferSource()
   audioSrc.buffer = audioBuf
